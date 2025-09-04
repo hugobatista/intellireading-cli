@@ -40,6 +40,15 @@ Intellireading commands can be used to:
 - **Metaguide an XHTML file**: Metaguide an XHTML file, transforming it into a metaguided XHTML file.
 - **Metaguide a directory**: Metaguide all files in a directory, transforming all EPUB, XHTML, and HTML files into metaguided files.
 
+## Library API Documentation
+
+For detailed documentation of the Python library API, including examples and advanced usage, see [API.md](API.md). The library provides functions for:
+
+- File-based processing: `metaguide_epub_file()`, `metaguide_xhtml_file()`, `metaguide_dir()`
+- Stream-based processing: `metaguide_epub_stream()`, `metaguide_xhtml_stream()`
+- Utility functions: `is_file_metaguided()`
+- Integration examples for web applications and batch processing
+
 
 ## Installation
 Intellireading is a command line tool that can be used in Windows, Linux, and MacOS. It is written in Python and can be used as a module or as a standalone tool, as long as you have Python >3.7 installed (or Docker).

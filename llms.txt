@@ -1,0 +1,167 @@
+# Intellireading CLI
+
+> A Python library and CLI tool for metaguiding text to improve reading focus and speed
+
+## Project Overview
+
+Intellireading CLI is a standalone tool and Python library that applies metaguiding (also known as Bionic Reading) to EPUB, XHTML, and HTML files. Metaguiding enhances reading by bolding portions of words to create visual anchors that help readers focus and potentially increase reading speed.
+
+## Key Features
+
+- **EPUB Processing**: Metaguide complete EPUB/KEPUB files while preserving structure
+- **XHTML/HTML Processing**: Process individual web pages and documents
+- **Batch Processing**: Process entire directories recursively
+- **Stream Support**: Memory-efficient processing for web applications
+- **Reversible**: Experimental feature to remove metaguiding
+- **CLI Interface**: Command-line tool for standalone use
+- **Python Library**: Programmatic API for integration
+
+## Project Structure
+
+```
+src/intellireading/client/
+├── __init__.py          # Main exports
+├── app.py              # CLI application entry point
+├── commands.py         # CLI command definitions
+├── metaguiding.py      # Core metaguiding logic
+└── __about_cli__.py    # Version information
+
+tests/
+├── metaguiding_cmds_test.py  # Test suite
+└── test_files/              # Test data
+```
+
+## Core Components
+
+### Main Library (`metaguiding.py`)
+- `RegExBoldMetaguider`: Core class implementing the metaguiding algorithm
+- File processing functions: `metaguide_epub_file()`, `metaguide_xhtml_file()`
+- Stream processing functions: `metaguide_epub_stream()`, `metaguide_xhtml_stream()`
+- Utility functions: `metaguide_dir()`, `is_file_metaguided()`
+
+### CLI Application (`app.py`, `commands.py`)
+- Click-based command-line interface
+- Commands: `metaguide-epub`, `metaguide-xhtml`, `metaguide-dir`
+- Support for file and directory processing with options
+
+## Metaguiding Algorithm
+
+The metaguiding process:
+1. **Word Detection**: Uses regex to identify words in text content
+2. **Bold Application**: Bolds the first portion of each word:
+   - 1-3 character words: Bold first character
+   - 4+ character words: Bold first half (rounded up)
+3. **HTML Preservation**: Maintains existing HTML structure and entities
+4. **Selective Processing**: Skips navigation files (TOC) in EPUB files
+
+## Technical Details
+
+### Supported Formats
+- **EPUB**: `.epub`, `.kepub` files
+- **XHTML/HTML**: `.xhtml`, `.html`, `.htm` files
+
+### Processing Features
+- **Encoding Detection**: Automatic detection via XML headers, BOM, and lxml
+- **ZIP Handling**: Maintains EPUB structure and compression
+- **Flag Files**: Tracks metaguided status with `intellireading.metaguide` marker
+- **Error Handling**: Graceful handling of malformed files
+
+### Performance
+- Stream-based processing for memory efficiency
+- Recursive directory traversal with skip logic
+- Preserves original file compression and structure
+
+## API Usage Examples
+
+### Basic File Processing
+```python
+from intellireading.client import metaguide_epub_file, metaguide_xhtml_file
+
+# Process EPUB
+metaguide_epub_file("book.epub", "book_metaguided.epub")
+
+# Process HTML
+metaguide_xhtml_file("article.html", "article_metaguided.html")
+```
+
+### Stream Processing
+```python
+from intellireading.client import metaguide_epub_stream
+from io import BytesIO
+
+with open("book.epub", "rb") as f:
+    input_stream = BytesIO(f.read())
+    output_stream = metaguide_epub_stream(input_stream)
+```
+
+### Directory Processing
+```python
+from intellireading.client import metaguide_dir
+
+# Process all files in directory recursively
+metaguide_dir("input_books/", "output_books/")
+```
+
+## CLI Usage Examples
+
+```bash
+# Metaguide an EPUB file
+intellireading metaguide-epub --input_file book.epub --output_file book_metaguided.epub
+
+# Metaguide an HTML file
+intellireading metaguide-xhtml --input_file page.html --output_file page_metaguided.html
+
+# Process directory
+intellireading metaguide-dir --input_dir books/ --output_dir books_metaguided/
+
+# Remove metaguiding (experimental)
+intellireading metaguide-epub --remove_metaguiding --input_file book_metaguided.epub --output_file book_original.epub
+```
+
+## Development Context
+
+### Dependencies
+- **Core**: `regex`, `lxml` for text processing and XML handling
+- **CLI**: `click` for command-line interface
+- **Build**: `hatch` for project management and building
+
+### Testing
+- Test suite in `tests/metaguiding_cmds_test.py`
+- Test files include sample EPUB and XHTML documents
+- Tests cover both file and stream processing
+
+### Distribution
+- Published to PyPI as `intellireading-cli`
+- Docker images available at `ghcr.io/0x6f677548/intellireading-cli`
+- Supports Python 3.7+
+
+## Use Cases
+
+### Individual Users
+- Improve reading focus for people with dyslexia or ADHD
+- Enhance reading speed and comprehension
+- Process personal EPUB library
+
+### Developers
+- Integrate metaguiding into reading applications
+- Batch process content for educational platforms
+- Add accessibility features to web applications
+
+### Content Publishers
+- Prepare accessible versions of digital content
+- Offer metaguided options for readers
+- Process large content libraries
+
+## Related Projects
+
+Part of the larger Intellireading ecosystem:
+- **Website**: Web interface for online processing
+- **API Server**: Backend service for the website
+- **Calibre Plugins**: Integration with Calibre e-book management
+
+## Important Notes
+
+- **Experimental Removal**: The `remove_metaguiding` feature is experimental and may not perfectly restore original formatting
+- **TOC Preservation**: Navigation files are intentionally skipped to maintain usability
+- **Encoding Handling**: Multiple fallback methods ensure broad compatibility
+- **Memory Efficiency**: Stream-based processing suitable for large files and web applications
