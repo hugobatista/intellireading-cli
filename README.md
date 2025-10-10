@@ -6,7 +6,7 @@
 [![Deploy to ghcr.io](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/build-and-publish-to-ghcr.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/build-and-publish-to-ghcr.yml)
 [![Lint](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/lint.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/lint.yml)
 [![Test](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/test.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/test.yml)
-
+[![GitMCP](https://img.shields.io/endpoint?url=https://gitmcp.io/badge/0x6f677548/intellireading-cli)](https://gitmcp.io/0x6f677548/intellireading-cli)
 
 Intellireading is a CLI tool with commands to accelerate your reading experience. It can also be used as a Python library.
 Currently, it supports metaguiding an EPUB, KEPUB, XHTML, or HTML file (more features coming):
