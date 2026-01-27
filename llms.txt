@@ -132,7 +132,7 @@ intellireading metaguide-epub --remove_metaguiding --input_file book_metaguided.
 
 ### Distribution
 - Published to PyPI as `intellireading-cli`
-- Docker images available at `ghcr.io/0x6f677548/intellireading-cli`
+- Docker images available at `https://go.hugobatista.com/ghcr/intellireading-cli`
 - Supports Python 3.7+
 
 ## Use Cases
