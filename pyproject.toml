@@ -11,7 +11,7 @@ requires-python = ">=3.13"
 license = "GPL-3.0"
 keywords = ["kepub","epub", "calibre", "ebook","kindle","kobo","speed-reading", "dyslexia", "adhd"]
 authors = [
-  { name = "Hugo Batista"},
+  { name = "Hugo Batista <intellireading at hugobatista.com>"},
 ]
 classifiers = [
   "Operating System :: OS Independent",

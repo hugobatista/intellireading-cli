@@ -6,7 +6,7 @@
 [![Deploy to ghcr.io](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/build-and-publish-to-ghcr.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/build-and-publish-to-ghcr.yml)
 [![Lint](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/lint.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/lint.yml)
 [![Test](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/test.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/test.yml)
-[![GitMCP](https://img.shields.io/endpoint?url=https://gitmcp.io/badge/0x6f677548/intellireading-cli)](https://gitmcp.io/0x6f677548/intellireading-cli)
+[![GitMCP](https://img.shields.io/endpoint?url=https://gitmcp.io/badge/hugobatista/intellireading-cli)](https://gitmcp.io/hugobatista/intellireading-cli)
 
 Intellireading is a CLI tool with commands to accelerate your reading experience. It can also be used as a Python library.
 Currently, it supports metaguiding an EPUB, KEPUB, XHTML, or HTML file (more features coming):
@@ -65,18 +65,18 @@ Alternatively, you can use the Docker image:
 
 #### Help command
 ```console
-> docker pull ghcr.io/0x6f677548/intellireading-cli:latest
-> docker run -it --rm ghcr.io/0x6f677548/intellireading-cli --help
+> docker pull ghcr.io/hugobatista/intellireading-cli:latest
+> docker run -it --rm ghcr.io/hugobatista/intellireading-cli --help
 ```
 
 #### Metaguide an EPUB file
 ##### Linux/MacOS
 ```console
-> docker run -it --rm -v $(pwd)/tests:/tests ghcr.io/0x6f677548/intellireading-cli metaguide-epub --input_file '/tests/test_files/input.epub' --output_file '/tests/test_files/output.epub'
+> docker run -it --rm -v $(pwd)/tests:/tests ghcr.io/hugobatista/intellireading-cli metaguide-epub --input_file '/tests/test_files/input.epub' --output_file '/tests/test_files/output.epub'
 ```
 ##### Windows
 ```powershell
-> docker run -it --rm -v ${pwd}/tests:/tests ghcr.io/0x6f677548/intellireading-cli metaguide-epub --input_file '/tests/test_files/input.epub' --output_file '/tests/test_files/output.epub'
+> docker run -it --rm -v ${pwd}/tests:/tests ghcr.io/hugobatista/intellireading-cli metaguide-epub --input_file '/tests/test_files/input.epub' --output_file '/tests/test_files/output.epub'
 ```
 
 ## CLI Usage
