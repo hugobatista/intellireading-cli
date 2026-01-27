@@ -45,6 +45,9 @@ intellireading = "intellireading.client:entrypoint"
 Documentation = "https://go.hugobatista.com/gh/intellireading-cli#readme"
 Issues = "https://go.hugobatista.com/gh/intellireading-cli/issues"
 Source = "https://go.hugobatista.com/gh/intellireading-cli"
+Homepage = "https://go.hugobatista.com/gh/intellireading-cli"
+Repository = "https://go.hugobatista.com/gh/intellireading-cli.git"
+
 
 [tool.hatch.version]
 path = "src/intellireading/client/__about_cli__.py"
