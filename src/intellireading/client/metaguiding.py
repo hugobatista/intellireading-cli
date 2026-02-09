@@ -12,7 +12,6 @@ import regex as re
 # it still works
 from .__about_cli__ import __version__ as cli_version  # noqa: TID252
 
-
 _logger = logging.getLogger(__name__)
 _METAGUIDED_FLAG_FILENAME = "intellireading.metaguide"
 _EPUB_EXTENSIONS = [".EPUB", ".KEPUB"]
