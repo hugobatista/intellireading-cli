@@ -14,7 +14,7 @@ Currently, it supports metaguiding an EPUB, KEPUB, XHTML, or HTML file (more fea
 > intellireading metaguide-epub --input_file mybook.epub --output_file mybook_metaguided.epub
 ```
 Example of a text converted to a metaguided text:
-![Intellireading.com](https://go.hugobatista.com/ghraw/intellireading-www/main/src/img/sample.png) 
+![Intellireading.com](https://go.hugobatista.com/ghraw/intellireading-www/main/public/img/sample.png) 
 
 
 This repo is part of the [Intellireading](https://intellireading.com/) project, which aims to help people with dyslexia, ADHD, or anyone who wants to improve their reading focus and speed. 
