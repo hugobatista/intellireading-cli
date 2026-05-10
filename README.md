@@ -1,4 +1,4 @@
-![Intellireading.com](https://go.hugobatista.com/ghraw/intellireading-www/main/src/img/intellireading.png)
+![Intellireading.com](https://go.hugobatista.com/ghraw/intellireading-www/main/public/img/intellireading.png)
 # Standalone tool and library
 
 [![PyPI - Version](https://img.shields.io/pypi/v/intellireading-cli.svg)](https://pypi.org/project/intellireading-cli)
