@@ -142,10 +142,13 @@ class RegExBoldMetaguider:
     def _get_encoding_using_lxml(self, xhtml_document: bytes) -> str | None:
         from lxml import etree
 
-        parser = etree.XMLParser(resolve_entities=False)
-        doc = etree.fromstring(xhtml_document, parser=parser).getroottree()
-        docinfo = doc.docinfo
-        return docinfo.encoding
+        try:
+            parser = etree.XMLParser(resolve_entities=False)
+            doc = etree.fromstring(xhtml_document, parser=parser).getroottree()
+            docinfo = doc.docinfo
+            return docinfo.encoding
+        except etree.XMLSyntaxError:
+            return None
 
     def _get_encoding_using_bom(self, xhtml_document: bytes) -> str | None:
         if xhtml_document.startswith(b"\xef\xbb\xbf"):
