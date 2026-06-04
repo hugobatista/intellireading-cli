@@ -179,7 +179,7 @@ exclude_lines = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-v"
+addopts = "-v --cov-report=term-missing"
 pythonpath = ["src"]
 testpaths = ["tests"]
 
