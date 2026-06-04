@@ -4,7 +4,8 @@ import os
 import sys
 import traceback
 import zipfile
-from typing import Generator
+from collections.abc import Generator
+from typing import cast
 import math
 import regex as re
 
@@ -146,7 +147,7 @@ class RegExBoldMetaguider:
             parser = etree.XMLParser(resolve_entities=False)
             doc = etree.fromstring(xhtml_document, parser=parser).getroottree()
             docinfo = doc.docinfo
-            return docinfo.encoding
+            return cast(str | None, docinfo.encoding)
         except etree.XMLSyntaxError:
             return None
 
@@ -177,7 +178,7 @@ class RegExBoldMetaguider:
         header = xhtml_document[:xml_header_end].decode("utf-8")
         match = re.search(r'encoding=(["\'])([a-zA-Z][a-zA-Z0-9-]{0,38}[a-zA-Z0-9])\1', header)
         if match:
-            return match.group(2)
+            return cast(str, match.group(2))
         else:
             # although the XML header is present, it does not contain an encoding
             # this is not a valid XHTML document, but we can still try to detect the encoding on a later stage
@@ -212,7 +213,6 @@ class RegExBoldMetaguider:
 
 
 class _EpubItemFile:
-
     def __init__(self, filename: str | None = None, content: bytes = b"") -> None:
         self.filename = filename
         self.content = content
@@ -234,7 +234,7 @@ class _EpubItemFile:
     def __str__(self) -> str:
         return f"{self.filename} ({len(self.content)} bytes)"
 
-    def metaguide(self, metaguider: RegExBoldMetaguider, *, remove_metaguiding: bool = False):
+    def metaguide(self, metaguider: RegExBoldMetaguider, *, remove_metaguiding: bool = False) -> None:
         if not remove_metaguiding and self.metaguided:
             _logger.warning(f"File {self.filename} already metaguided, skipping")
         elif self.is_toc_document:
@@ -251,7 +251,7 @@ class _EpubItemFile:
 _metaguider = RegExBoldMetaguider()
 
 
-def _get_epub_item_files_from_zip(input_zip: zipfile.ZipFile) -> list:
+def _get_epub_item_files_from_zip(input_zip: zipfile.ZipFile) -> list[_EpubItemFile]:
     def read_compressed_file(input_zip: zipfile.ZipFile, filename: str) -> _EpubItemFile:
         return _EpubItemFile(filename, input_zip.read(filename))
 
@@ -262,15 +262,15 @@ def _get_epub_item_files_from_zip(input_zip: zipfile.ZipFile) -> list:
 
 def _process_epub_item_files(
     epub_item_files: list[_EpubItemFile], *, remove_metaguiding: bool = False
-) -> Generator[_EpubItemFile, None, None]:
+) -> Generator[_EpubItemFile]:
     for epub_item_file in epub_item_files:
         _logger.debug(f"Processing file '{epub_item_file.filename}' remove_metaguiding={remove_metaguiding}")
         epub_item_file.metaguide(_metaguider, remove_metaguiding=remove_metaguiding)
         yield epub_item_file
 
 
-def _write_item_files_to_zip(epub_item_files, output_zip):
-    def write_compressed_file(output_zip: zipfile.ZipFile, epub_item_file: _EpubItemFile):
+def _write_item_files_to_zip(epub_item_files: list[_EpubItemFile], output_zip: zipfile.ZipFile) -> None:
+    def write_compressed_file(output_zip: zipfile.ZipFile, epub_item_file: _EpubItemFile) -> None:
         if epub_item_file.filename is None:
             msg = "EpubItemFile.filename is None"
             raise ValueError(msg)
@@ -283,14 +283,14 @@ def _write_item_files_to_zip(epub_item_files, output_zip):
         write_compressed_file(output_zip, _epub_item_file)
 
 
-def _ensure_file_exists(input_file: str):
+def _ensure_file_exists(input_file: str) -> None:
     if not os.path.isfile(input_file):
         exception_message = f"Input file '{input_file}' does not exist"
         _logger.error(exception_message)
         raise ValueError(exception_message)
 
 
-def _ensure_allowed_extension(input_file: str, extensions: list[str]):
+def _ensure_allowed_extension(input_file: str, extensions: list[str]) -> None:
     file_extension = os.path.splitext(input_file)[-1].upper()
     if file_extension not in extensions:
         exception_message = f"Input file '{input_file}' extension is not in {extensions}"
@@ -326,7 +326,7 @@ def _check_flag_file(
     return is_already_metaguided, flag_file
 
 
-def metaguide_epub_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False):
+def metaguide_epub_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False) -> None:
     """Metaguide an epub file
     input_file: str
         The input epub file
@@ -400,7 +400,7 @@ def metaguide_epub_stream(input_stream: BytesIO, *, remove_metaguiding: bool = F
     return output_stream
 
 
-def metaguide_xhtml_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False):
+def metaguide_xhtml_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False) -> None:
     """Metaguide an xhtml file
     input_file: str
         The input xhtml file
@@ -438,7 +438,7 @@ def metaguide_xhtml_stream(input_file_stream: BytesIO, *, remove_metaguiding: bo
     return output_file_stream
 
 
-def metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool = False):
+def metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool = False) -> None:
     """Metaguides all epubs and xhtml found in a directory (recursively)
     input_dir: str
         The input epub/xhtml directory
@@ -450,7 +450,7 @@ def metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool =
 
     # get a list of all the files in the directory, and the child directories if recursive
     # verify if the file is a file and if it has the correct extension
-    def get_files(directory, recursive):
+    def get_files(directory: str, *, recursive: bool) -> Generator[str]:
         for filename in os.listdir(directory):
             input_filename = os.path.join(directory, filename)
 
@@ -458,7 +458,7 @@ def metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool =
             if os.path.isfile(input_filename) and (extension in _EPUB_EXTENSIONS or extension in _XHTML_EXTENSIONS):
                 yield input_filename
             elif os.path.isdir(input_filename) and recursive:
-                yield from get_files(input_filename, recursive)
+                yield from get_files(input_filename, recursive=recursive)
 
     _logger.info(f"Processing files in {input_dir} to {output_dir} (recursively)")
 
@@ -471,7 +471,7 @@ def metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool =
         _logger.info(f"Creating {output_dir}")
         os.makedirs(output_dir)
 
-    for input_filename in get_files(input_dir, True):
+    for input_filename in get_files(input_dir, recursive=True):
         output_filename = os.path.join(output_dir, os.path.basename(input_filename))
         _logger.debug(f"Processing {input_filename} to {output_filename}")
 

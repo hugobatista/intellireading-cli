@@ -6,3 +6,4 @@ __pycache__
 dist/*
 app/*
 tests/test_files/output
+bin/act

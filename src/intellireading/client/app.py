@@ -18,7 +18,7 @@ from intellireading.client.commands import (
     help="The log level to use for logging (default: INFO). Possible values: DEBUG, INFO, WARNING, ERROR, CRITICAL",
 )
 @click.pass_context
-def cli(ctx: click.Context, log_level: str):
+def cli(ctx: click.Context, log_level: str) -> None:
     ctx.ensure_object(dict)
 
     import logging
@@ -32,7 +32,7 @@ cli.add_command(metaguide_dir_cmd)
 cli.add_command(metaguide_xhtml_cmd)
 
 
-def entrypoint():
+def entrypoint() -> None:
     cli(obj={})
 
 

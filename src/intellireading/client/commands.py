@@ -2,7 +2,8 @@ import click
 import logging
 import sys
 from intellireading.client.metaguiding import metaguide_epub_file, metaguide_dir, metaguide_xhtml_file
-from typing import Callable, Any
+from typing import Any, cast
+from collections.abc import Callable
 
 _logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ _remove_metaguiding_option = click.option(
 )
 
 
-def _exit_with_exception(exception: Exception, exit_code: int = 1, fg: str = "red"):
+def _exit_with_exception(exception: Exception, exit_code: int = 1, fg: str = "red") -> None:
     """Exit the program with an exception and exit code"""
     try:
         _logger.exception(exception)
@@ -78,9 +79,9 @@ def _get_from_ctx_if_none(
     if value:
         return value
     elif ctx.obj.get(ctx_key):
-        return ctx.obj[ctx_key]
+        return cast(str, ctx.obj[ctx_key])
     else:
-        result = ctx.invoke(invoke_func, **kwargs)
+        result: str = ctx.invoke(invoke_func, **kwargs)
         return result
 
 
@@ -92,7 +93,7 @@ def _get_from_ctx_if_none(
 @_input_file_option
 @_output_file_option
 @_remove_metaguiding_option
-def metaguide_epub_cmd(ctx: click.Context, input_file: str, output_file: str, *, remove_metaguiding: bool):
+def metaguide_epub_cmd(ctx: click.Context, input_file: str, output_file: str, *, remove_metaguiding: bool) -> None:
     """Applies or removes metaguiding to the provided epub/kepub file"""
 
     try:
@@ -123,7 +124,7 @@ def metaguide_epub_cmd(ctx: click.Context, input_file: str, output_file: str, *,
 @_input_dir_option
 @_output_dir_option
 @_remove_metaguiding_option
-def metaguide_dir_cmd(ctx: click.Context, input_dir: str, output_dir: str, *, remove_metaguiding: bool):
+def metaguide_dir_cmd(ctx: click.Context, input_dir: str, output_dir: str, *, remove_metaguiding: bool) -> None:
     """Applies metaguiding to the provided directory, recursively, for all epubs and xhtml files found in the directory
     input_dir: str
         The input directory
@@ -161,7 +162,7 @@ def metaguide_dir_cmd(ctx: click.Context, input_dir: str, output_dir: str, *, re
 @_input_file_option
 @_output_file_option
 @_remove_metaguiding_option
-def metaguide_xhtml_cmd(ctx: click.Context, input_file: str, output_file: str, *, remove_metaguiding: bool):
+def metaguide_xhtml_cmd(ctx: click.Context, input_file: str, output_file: str, *, remove_metaguiding: bool) -> None:
     """Applies or removes metaguiding to the provided xhtml file"""
 
     try:

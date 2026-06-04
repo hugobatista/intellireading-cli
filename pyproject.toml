@@ -41,6 +41,27 @@ dependencies = [
 [project.scripts]
 intellireading = "intellireading.client:entrypoint"
 
+[tool.uv]
+required-version = "0.11.18"
+exclude-newer = "30 days"
+
+[dependency-groups]
+lint = [
+    "mypy>=1.0.0",
+    "ruff>=0.0.243",
+    "types-regex",
+]
+test = [
+    "coverage[toml]>=6.5",
+    "pytest",
+    "pytest-cov",
+]
+dev = [
+    "hatch>=1.16.5",
+    {include-group = "lint"},
+    {include-group = "test"},
+]
+
 [project.urls]
 Documentation = "https://go.hugobatista.com/gh/intellireading-cli#readme"
 Issues = "https://go.hugobatista.com/gh/intellireading-cli/issues"
@@ -57,61 +78,24 @@ packages = ["src/intellireading"]
 exclude = ["tests"]
 
 [tool.hatch.build.targets.sdist]
-packages = ["src/intellireading"]
-exclude = ["tests"]
+only-include = ["src/intellireading", "README.md"]
 
 [tool.hatch.envs.default]
-installer = "uv"
-dependencies = [
-  "coverage[toml]>=6.5",
-  "pytest",
-]
+type = "virtual"
+path = ".venv"
+
 [tool.hatch.envs.default.scripts]
-test = "pytest {args:tests} -v"
-test-cov = "coverage run -m pytest {args:tests} -v"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-  "coverage html",
-]
-cov = [
-  "test-cov",
-  "cov-report",
-]
-
-[[tool.hatch.envs.all.matrix]]
-python = ["3.13"]
-
-[tool.hatch.envs.lint]
-detached = true
-dependencies = [
-  "black>=23.1.0",
-  "mypy>=1.0.0",
-  "ruff>=0.0.243",
-]
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --ignore-missing-imports --install-types --non-interactive {args:src/intellireading tests}"
-style = [
-  "ruff check {args:.}",
-  "black --check --diff {args:.}",
-]
-fmt = [
-  "black {args:.}",
-  "ruff --fix {args:.}",
-  "style",
-]
-all = [
-  "style",
-  "typing",
-]
-
-[tool.black]
-target-version = ["py37"]
-line-length = 120
-skip-string-normalization = true
+lint = "ruff check . --fix"
+format = "ruff format ."
+lint-check = "ruff check ."
+format-check = "ruff format --check ."
+test = "pytest"
+typecheck = "mypy"
+validate = ["lint", "format", "test", "typecheck"]
+check = ["lint-check", "format-check", "test", "typecheck"]
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py313"
 line-length = 120
 lint.select = [
   "A",
@@ -169,6 +153,9 @@ ban-relative-imports = "all"
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
 
+[tool.ruff.format]
+quote-style = "double"
+
 [tool.coverage.run]
 source_pkgs = ["intellireading", "tests"]
 branch = true
@@ -182,8 +169,34 @@ intellireading = ["src/intellireading", "*/intellireading-cli/src/intellireading
 tests = ["tests", "*/intellireading-cli/tests"]
 
 [tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 100
 exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.pytest.ini_options]
+addopts = "-v"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+incremental = false
+check_untyped_defs = true
+mypy_path = ["src"]
+files = ["src/intellireading"]
+exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["lxml.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false

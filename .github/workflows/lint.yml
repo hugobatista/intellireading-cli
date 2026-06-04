@@ -4,22 +4,18 @@ name: lint
 on:
   push:
     branches: [master, main]
-    # only when python files are changed
     paths: 
       - '**.py'
   pull_request:
     branches: [master, main]
-  
   workflow_dispatch:
 
-# set the run-name 
 run-name: ${{ github.ref_name }} -> lint (
   ${{ github.run_attempt }}
   )
 
 permissions:
   contents: read
-
 
 jobs:
   lint:
@@ -34,18 +30,26 @@ jobs:
           echo "datetime: $(date '+%Y-%m-%d %H:%M:%S')"
 
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6.2.0
         with:
-          python-version: 3.13
+          python-version-file: pyproject.toml
 
-      - name: Update pip and install hatch
-        run: |
-          export PIP_ROOT_USER_ACTION=ignore
-          pip install --upgrade pip
-          pip install hatch
-  
-      - name: Hatch lint all
-        run: hatch run lint:all
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --frozen --no-dev --group lint --no-install-project
+
+      - name: Lint check
+        run: uv run --no-project ruff check .
+
+      - name: Format check
+        run: uv run --no-project ruff format --check .
+
+      - name: Type check
+        run: uv run --no-project mypy

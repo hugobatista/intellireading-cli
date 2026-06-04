@@ -40,7 +40,6 @@ def test_metaguide_epub_cmd_with_remove_flag():
     epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
 
     with runner.isolated_filesystem():
-
         # metaguide the epub file first
         # Run the command
         result = runner.invoke(metaguide_epub_cmd, ["--input_file", epub_test_file, "--output_file", "metaguided.epub"])
@@ -102,7 +101,6 @@ def test_metaguide_xhtml_cmd_with_remove_flag():
     xhtml_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.xhtml")
 
     with runner.isolated_filesystem():
-
         # metaguide the xhtml file first
         result = runner.invoke(
             metaguide_xhtml_cmd, ["--input_file", xhtml_test_file, "--output_file", "metaguided.xhtml"]
@@ -170,7 +168,6 @@ def test_metaguide_dir_cmd_with_remove_flag():
     test_dir = os.path.join(os.path.dirname(__file__), "test_files")
 
     with runner.isolated_filesystem():
-
         # metaguide the directory first
         result = runner.invoke(metaguide_dir_cmd, ["--input_dir", test_dir, "--output_dir", "metaguided_output"])
 
