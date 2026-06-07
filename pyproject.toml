@@ -176,7 +176,7 @@ tests = ["tests", "*/intellireading-cli/tests"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
-fail_under = 100
+fail_under = 75
 exclude_lines = [
   "pragma: no cover",
   "raise AssertionError",

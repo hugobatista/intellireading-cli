@@ -1,4 +1,5 @@
 import click
+from intellireading.client.__about_cli__ import __version__
 from intellireading.client.commands import (
     metaguide_epub_cmd,
     metaguide_xhtml_cmd,
@@ -11,6 +12,7 @@ from intellireading.client.commands import (
     chain=True,
     help="A set of tools designed to improve your reading experience.",
 )
+@click.version_option(version=__version__)
 @click.option(
     "--log_level",
     default="WARNING",
