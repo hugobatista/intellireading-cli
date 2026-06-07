@@ -1,49 +1,46 @@
-# =============================================================================
-# Stage 0: uv — pinned version for supply chain security
-# Pulls the exact uv version specified by UV_VERSION (overridable at build time).
-ARG UV_VERSION=0.11.18
-FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv-dist
+FROM ghcr.io/astral-sh/uv:0.11.18@sha256:78bc42400d77b0678ba95765305c826652ed5431f399257271dda681d0318f03 AS uv-dist
 
-# =============================================================================
-# Stage 1: Builder — export locked deps and build wheel
-FROM python:3.13-slim AS builder
-ENV PIP_ROOT_USER_ACTION=ignore
+FROM python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 AS builder
 
 WORKDIR /app
 
 COPY --from=uv-dist /uv /uvx /usr/local/bin/
 
-# uv.lock pins every transitive dependency — must be committed
 COPY pyproject.toml uv.lock README.md ./
 COPY src src/
 
-# Export locked runtime deps with hashes, build the project wheel
 RUN uv export --no-dev --no-emit-project -o requirements.txt \
  && uv build
 
-# =============================================================================
-# Stage 2: Runtime — minimal image with locked deps + app
-FROM python:3.13-slim
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_ROOT_USER_ACTION=ignore
+FROM python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3
+
+ARG UID=1000
+ARG GID=1000
+ARG APP_USER=appuser
 
 LABEL org.opencontainers.image.source=https://github.com/hugobatista/intellireading-cli
+LABEL security.scan="true"
 
-# Install locked deps with --require-hashes for supply chain integrity
-COPY --from=builder /app/requirements.txt ./
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+RUN addgroup --system --gid ${GID} ${APP_USER} \
+ && adduser --system --uid ${UID} --gid ${GID} --home /app --shell /sbin/nologin ${APP_USER} \
+ && mkdir -p /app && chown -R ${APP_USER}:${APP_USER} /app
+
+WORKDIR /app
+
+COPY --chown=${UID}:${GID} --from=builder /app/requirements.txt ./
 RUN pip install --no-cache --upgrade pip \
  && pip install --no-cache --require-hashes -r ./requirements.txt
 
-# Install the app wheel (no source in final image)
-COPY --from=builder /app/dist/*.whl /tmp/
-RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl \
- && addgroup --system app && adduser --system --group app \
- && mkdir -p /tmp/app \
- && chown -R app:app /tmp/app
+COPY --chown=${UID}:${GID} --from=builder /app/dist/*.whl /tmp/
+RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
 
-USER app
+USER ${APP_USER}
 
-VOLUME /tmp/app
+HEALTHCHECK --interval=300s --timeout=10s --start-period=5s --retries=3 \
+    CMD intellireading --version || exit 1
 
 ENTRYPOINT ["intellireading"]

@@ -45,6 +45,11 @@ intellireading = "intellireading.client:entrypoint"
 required-version = "0.11.18"
 exclude-newer = "30 days"
 
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+explicit = true
+
 [dependency-groups]
 lint = [
     "mypy>=1.0.0",
@@ -173,13 +178,15 @@ show_missing = true
 skip_covered = false
 fail_under = 100
 exclude_lines = [
-  "no cov",
+  "pragma: no cover",
+  "raise AssertionError",
+  "raise NotImplementedError",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-v --cov --cov-report=term-missing"
+addopts = "--tb=short --strict-markers --cov --cov-report=term-missing"
 pythonpath = ["src"]
 testpaths = ["tests"]
 

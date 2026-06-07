@@ -1,18 +1,12 @@
----
-name: create_draft_release
 # yamllint disable rule:line-length
+name: create_draft_release
 
 on:
   workflow_dispatch:
 
-# set the run-name 
-run-name: ${{ github.ref_name }} -> create_draft_release (
-  ${{ github.run_attempt }}
-  )
-    
+run-name: ${{ github.ref_name }} -> create_draft_release ( ${{ github.run_attempt }} )
 
 jobs:
-    
   create_draft_release:
     name: create_draft_release
     runs-on: ubuntu-latest
@@ -27,25 +21,21 @@ jobs:
         echo "datetime: $(date '+%Y-%m-%d %H:%M:%S')"
 
     - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        python-version: 3.13
-    
-    - name: Update pip and install hatch
-      run: |
-        export PIP_ROOT_USER_ACTION=ignore
-        pip install --upgrade pip
-        pip install hatch
+        fetch-depth: 1
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+    - name: Sync dev group
+      run: uv sync --frozen --group dev --no-install-project
 
     - name: Get version
       id: get_version
       run: |
-        export version=$(hatch version)
-        echo "version=$version" >> $GITHUB_OUTPUT
-      
+        echo "version=$(uv run --no-sync hatch version)" >> $GITHUB_OUTPUT
+
     #validates that the version is a valid semver
     - name: Validate version
       id: validate_version
@@ -55,14 +45,13 @@ jobs:
           exit 1
         fi
 
-    
     - name: Create release branch
       run: |
         git checkout -b "release/v${{ steps.get_version.outputs.version }}"
         git push origin "release/v${{ steps.get_version.outputs.version }}"
 
     - name: Create DRAFT release through github cli and upload assets
-      env: 
+      env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |        
+      run: |
         gh release create v${{ steps.get_version.outputs.version }} --title v${{ steps.get_version.outputs.version }} --generate-notes --draft
