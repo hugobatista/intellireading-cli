@@ -135,6 +135,26 @@ def test_metaguide_xhtml_cmd_with_remove_flag():
             assert "<b>" not in output_content
 
 
+def test_metaguide_xhtml_cmd_with_truncated_xml_header():
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        # The XML declaration was cut off before its closing "?>".
+        with open("truncated.xhtml", "wb") as f:
+            f.write(b'<?xml version="1.0" <html><body><p>hello</p></body></html>')
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd, ["--input_file", "truncated.xhtml", "--output_file", "output.xhtml"]
+        )
+
+        # No usable header: detected like a headerless document, not a crash.
+        assert result.exit_code == 0, result.output
+        assert os.path.exists("output.xhtml")
+
+        with open("output.xhtml", encoding="utf-8") as output_file:
+            assert "<b>" in output_file.read()
+
+
 def test_metaguide_dir_cmd():
     runner = CliRunner()
 

@@ -172,8 +172,9 @@ class RegExBoldMetaguider:
 
         xml_header_end = xhtml_document.find(b"?>") + 1
         if xml_header_end == 0:
-            msg = "Invalid XHTML document. Could not find closing XML element."
-            raise ValueError(msg)
+            # Truncated declaration: not a usable header, so fall through to
+            # BOM/lxml detection like a document with no header at all.
+            return None
 
         header = xhtml_document[:xml_header_end].decode("utf-8")
         match = re.search(r'encoding=(["\'])([a-zA-Z][a-zA-Z0-9-]{0,38}[a-zA-Z0-9])\1', header)
