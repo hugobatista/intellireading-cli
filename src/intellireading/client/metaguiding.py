@@ -170,12 +170,14 @@ class RegExBoldMetaguider:
         if not xhtml_document.startswith(b"<?xml "):
             return None
 
-        xml_header_end = xhtml_document.find(b"?>") + 1
-        if xml_header_end == 0:
-            msg = "Invalid XHTML document. Could not find closing XML element."
-            raise ValueError(msg)
+        xml_header_end = xhtml_document.find(b"?>")
+        if xml_header_end == -1:
+            # a truncated XML header is invalid, but should not prevent the remaining
+            # encoding detectors (BOM and lxml) from running
+            _logger.debug("XML header has no closing '?>'. Trying other encoding detection methods.")
+            return None
 
-        header = xhtml_document[:xml_header_end].decode("utf-8")
+        header = xhtml_document[: xml_header_end + 2].decode("utf-8")
         match = re.search(r'encoding=(["\'])([a-zA-Z][a-zA-Z0-9-]{0,38}[a-zA-Z0-9])\1', header)
         if match:
             return cast(str, match.group(2))
