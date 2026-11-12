@@ -1,3 +1,5 @@
+import contextlib
+
 from click.testing import CliRunner
 from intellireading.client.commands import (
     metaguide_epub_cmd,
@@ -8,13 +10,13 @@ from intellireading.client.metaguiding import _METAGUIDED_FLAG_FILENAME
 import os
 
 
-def test_metaguide_epub_cmd():
+def test_metaguide_epub_cmd(tmp_path):
     runner = CliRunner()
 
     # get the epub test file path from the tests folder
     epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
 
-    with runner.isolated_filesystem():
+    with contextlib.chdir(tmp_path):
         # Run the command
         result = runner.invoke(metaguide_epub_cmd, ["--input_file", epub_test_file, "--output_file", "output.epub"])
 
@@ -33,13 +35,13 @@ def test_metaguide_epub_cmd():
             assert os.path.exists(flag_file_path)
 
 
-def test_metaguide_epub_cmd_with_remove_flag():
+def test_metaguide_epub_cmd_with_remove_flag(tmp_path):
     runner = CliRunner()
 
     # get the epub test file path from the tests folder
     epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
 
-    with runner.isolated_filesystem():
+    with contextlib.chdir(tmp_path):
         # metaguide the epub file first
         # Run the command
         result = runner.invoke(metaguide_epub_cmd, ["--input_file", epub_test_file, "--output_file", "metaguided.epub"])
@@ -77,13 +79,13 @@ def test_metaguide_epub_cmd_with_remove_flag():
                         assert "<b>" not in xhtml_content
 
 
-def test_metaguide_xhtml_cmd():
+def test_metaguide_xhtml_cmd(tmp_path):
     runner = CliRunner()
 
     # get the epub test file path from the tests folder
     xhtml_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.xhtml")
 
-    with runner.isolated_filesystem():
+    with contextlib.chdir(tmp_path):
         # Run the command
         result = runner.invoke(metaguide_xhtml_cmd, ["--input_file", xhtml_test_file, "--output_file", "output.xhtml"])
 
@@ -94,13 +96,13 @@ def test_metaguide_xhtml_cmd():
         assert os.path.exists("output.xhtml")
 
 
-def test_metaguide_xhtml_cmd_with_remove_flag():
+def test_metaguide_xhtml_cmd_with_remove_flag(tmp_path):
     runner = CliRunner()
 
     # get the epub test file path from the tests folder
     xhtml_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.xhtml")
 
-    with runner.isolated_filesystem():
+    with contextlib.chdir(tmp_path):
         # metaguide the xhtml file first
         result = runner.invoke(
             metaguide_xhtml_cmd, ["--input_file", xhtml_test_file, "--output_file", "metaguided.xhtml"]
@@ -135,13 +137,13 @@ def test_metaguide_xhtml_cmd_with_remove_flag():
             assert "<b>" not in output_content
 
 
-def test_metaguide_dir_cmd():
+def test_metaguide_dir_cmd(tmp_path):
     runner = CliRunner()
 
     # get the epub test file path from the tests folder
     test_dir = os.path.join(os.path.dirname(__file__), "test_files")
 
-    with runner.isolated_filesystem():
+    with contextlib.chdir(tmp_path):
         # Run the command
         result = runner.invoke(metaguide_dir_cmd, ["--input_dir", test_dir, "--output_dir", "output"])
 
@@ -161,13 +163,13 @@ def test_metaguide_dir_cmd():
             assert os.path.exists(flag_file_path)
 
 
-def test_metaguide_dir_cmd_with_remove_flag():
+def test_metaguide_dir_cmd_with_remove_flag(tmp_path):
     runner = CliRunner()
 
     # get the epub test file path from the tests folder
     test_dir = os.path.join(os.path.dirname(__file__), "test_files")
 
-    with runner.isolated_filesystem():
+    with contextlib.chdir(tmp_path):
         # metaguide the directory first
         result = runner.invoke(metaguide_dir_cmd, ["--input_dir", test_dir, "--output_dir", "metaguided_output"])
 
