@@ -3,6 +3,9 @@
     "config:recommended"
   ],
   "minimumReleaseAge": "30 days",
+  "prCreation": "not-pending",
+  "internalChecksFilter": "strict",
+  "internalChecksAsSuccess": true,
   "dependencyDashboard": true,
   "pinDigests": true,
   "osvVulnerabilityAlerts": true,
@@ -50,7 +53,8 @@
       ],
       "prPriority": 10,
       "groupName": "security updates",
-      "dependencyDashboardApproval": false
+      "dependencyDashboardApproval": false,
+      "minimumReleaseAge": null
     },
     {
       "matchDatasources": [
@@ -78,7 +82,8 @@
         "patch"
       ],
       "minimumReleaseAgeBehaviour": "timestamp-optional",
-      "dependencyDashboardApproval": true
+      "dependencyDashboardApproval": true,
+      "groupName": "uv"
     },
     {
       "matchDatasources": [
