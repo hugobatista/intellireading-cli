@@ -1,0 +1,97 @@
+{
+  "extends": [
+    "config:recommended"
+  ],
+  "minimumReleaseAge": "30 days",
+  "dependencyDashboard": true,
+  "pinDigests": true,
+  "osvVulnerabilityAlerts": true,
+  "timezone": "Europe/Lisbon",
+  "gitAuthor": "hugobatista <hugobatista@users.noreply.github.com>",
+  "labels": [
+    "dependencies"
+  ],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "non-major dependency updates"
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major-update"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "digest",
+        "pinDigest"
+      ],
+      "minimumReleaseAge": "30 days"
+    },
+    {
+      "matchCategories": [
+        "security"
+      ],
+      "labels": [
+        "dependencies",
+        "security"
+      ],
+      "prPriority": 10,
+      "groupName": "security updates",
+      "dependencyDashboardApproval": false
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/astral-sh/uv"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "pinDigest"
+      ],
+      "minimumReleaseAge": null
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/astral-sh/uv"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "python"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "enabled": false
+    }
+  ]
+}

@@ -6,6 +6,7 @@
 [![Deploy to ghcr.io](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/build-and-publish-to-ghcr.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/build-and-publish-to-ghcr.yml)
 [![Lint](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/lint.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/lint.yml)
 [![Test](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/test.yml/badge.svg)](https://go.hugobatista.com/gh/intellireading-cli/actions/workflows/test.yml)
+[![Renovate](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovatebot)](https://docs.renovatebot.com)
 [![GitMCP](https://img.shields.io/endpoint?url=https://gitmcp.io/badge/hugobatista/intellireading-cli)](https://gitmcp.io/hugobatista/intellireading-cli)
 
 Intellireading is a CLI tool with commands to accelerate your reading experience. It can also be used as a Python library.
@@ -343,4 +344,23 @@ except FileNotFoundError as e:
     print(f"File not found: {e}")
 except Exception as e:
     print(f"Unexpected error: {e}")
+```
+
+## Dependency updates
+
+Dependencies are updated automatically by [Renovate](https://docs.renovatebot.com).
+The configuration lives in [`renovate.json`](renovate.json).
+
+Updates that pass the 30-day minimum release age are proposed as pull requests.
+Major updates are labelled `major-update`, security updates are labelled `security`,
+and `ghcr.io/astral-sh/uv` version bumps wait for approval in the Dependency Dashboard.
+
+To run Renovate locally as a dry run:
+
+```bash
+act workflow_dispatch -W .github/workflows/renovate.yml \
+  --env RENOVATE_DRY_RUN=full \
+  --env RENOVATE_REPOSITORIES=hugobatista/intellireading-cli \
+  --env LOG_LEVEL=info \
+  -s RENOVATE_TOKEN=<token>
 ```
