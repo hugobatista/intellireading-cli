@@ -52,6 +52,14 @@ _remove_metaguiding_option = click.option(
     help="Remove metaguiding from the files (EXPERIMENTAL)",
 )
 
+_no_about_page_option = click.option(
+    "--no_about_page",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Do not add the IntelliReading about/donation page to the end of EPUB files",
+)
+
 
 def _exit_with_exception(exception: Exception, exit_code: int = 1, fg: str = "red") -> None:
     """Exit the program with an exception and exit code"""
@@ -93,7 +101,15 @@ def _get_from_ctx_if_none(
 @_input_file_option
 @_output_file_option
 @_remove_metaguiding_option
-def metaguide_epub_cmd(ctx: click.Context, input_file: str, output_file: str, *, remove_metaguiding: bool) -> None:
+@_no_about_page_option
+def metaguide_epub_cmd(
+    ctx: click.Context,
+    input_file: str,
+    output_file: str,
+    *,
+    remove_metaguiding: bool,
+    no_about_page: bool,
+) -> None:
     """Applies or removes metaguiding to the provided epub/kepub file"""
 
     try:
@@ -108,7 +124,12 @@ def metaguide_epub_cmd(ctx: click.Context, input_file: str, output_file: str, *,
         output_file = _get_from_ctx_if_none(ctx, "output_file", output_file, lambda: click.prompt("The output file"))
         click.echo(f"Output file: {output_file}")
 
-        metaguide_epub_file(input_file, output_file, remove_metaguiding=remove_metaguiding)
+        metaguide_epub_file(
+            input_file,
+            output_file,
+            remove_metaguiding=remove_metaguiding,
+            include_about_page=not no_about_page,
+        )
 
         # store the output file in the context for chaining commands
         ctx.obj["output_file"] = output_file
@@ -124,7 +145,15 @@ def metaguide_epub_cmd(ctx: click.Context, input_file: str, output_file: str, *,
 @_input_dir_option
 @_output_dir_option
 @_remove_metaguiding_option
-def metaguide_dir_cmd(ctx: click.Context, input_dir: str, output_dir: str, *, remove_metaguiding: bool) -> None:
+@_no_about_page_option
+def metaguide_dir_cmd(
+    ctx: click.Context,
+    input_dir: str,
+    output_dir: str,
+    *,
+    remove_metaguiding: bool,
+    no_about_page: bool,
+) -> None:
     """Applies metaguiding to the provided directory, recursively, for all epubs and xhtml files found in the directory
     input_dir: str
         The input directory
@@ -149,7 +178,12 @@ def metaguide_dir_cmd(ctx: click.Context, input_dir: str, output_dir: str, *, re
         if input_dir == output_dir:
             _exit_with_exception(ValueError("Input and output directories cannot be the same. Exiting..."), fg="red")
 
-        metaguide_dir(input_dir, output_dir, remove_metaguiding=remove_metaguiding)
+        metaguide_dir(
+            input_dir,
+            output_dir,
+            remove_metaguiding=remove_metaguiding,
+            include_about_page=not no_about_page,
+        )
     except Exception as e:
         _exit_with_exception(e)
 

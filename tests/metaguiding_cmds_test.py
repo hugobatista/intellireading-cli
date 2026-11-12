@@ -6,7 +6,7 @@ from intellireading.client.commands import (
     metaguide_xhtml_cmd,
     metaguide_dir_cmd,
 )
-from intellireading.client.metaguiding import _METAGUIDED_FLAG_FILENAME
+from intellireading.client.metaguiding import _ABOUT_PAGE_FILENAME, _METAGUIDED_FLAG_FILENAME
 import os
 
 
@@ -33,6 +33,34 @@ def test_metaguide_epub_cmd(tmp_path):
             zip_ref.extractall("output")
             flag_file_path = f"output/{_METAGUIDED_FLAG_FILENAME}"
             assert os.path.exists(flag_file_path)
+            assert f"EPUB/{_ABOUT_PAGE_FILENAME}" in zip_ref.namelist()
+
+
+def test_metaguide_epub_cmd_with_no_about_page(tmp_path):
+    runner = CliRunner()
+
+    epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
+
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(
+            metaguide_epub_cmd,
+            [
+                "--input_file",
+                epub_test_file,
+                "--output_file",
+                "output.epub",
+                "--no_about_page",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert os.path.exists("output.epub")
+
+        import zipfile
+
+        with zipfile.ZipFile("output.epub", "r") as zip_ref:
+            assert f"EPUB/{_ABOUT_PAGE_FILENAME}" not in zip_ref.namelist()
+            assert _METAGUIDED_FLAG_FILENAME in zip_ref.namelist()
 
 
 def test_metaguide_epub_cmd_with_remove_flag(tmp_path):
@@ -161,6 +189,28 @@ def test_metaguide_dir_cmd(tmp_path):
             zip_ref.extractall("output")
             flag_file_path = f"output/{_METAGUIDED_FLAG_FILENAME}"
             assert os.path.exists(flag_file_path)
+            assert f"EPUB/{_ABOUT_PAGE_FILENAME}" in zip_ref.namelist()
+
+
+def test_metaguide_dir_cmd_with_no_about_page(tmp_path):
+    runner = CliRunner()
+
+    test_dir = os.path.join(os.path.dirname(__file__), "test_files")
+
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(
+            metaguide_dir_cmd,
+            ["--input_dir", test_dir, "--output_dir", "output", "--no_about_page"],
+        )
+
+        assert result.exit_code == 0
+        assert os.path.exists("output/input.epub")
+
+        import zipfile
+
+        with zipfile.ZipFile("output/input.epub", "r") as zip_ref:
+            assert f"EPUB/{_ABOUT_PAGE_FILENAME}" not in zip_ref.namelist()
+            assert _METAGUIDED_FLAG_FILENAME in zip_ref.namelist()
 
 
 def test_metaguide_dir_cmd_with_remove_flag(tmp_path):
