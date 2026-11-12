@@ -7,7 +7,7 @@
   "pinDigests": true,
   "osvVulnerabilityAlerts": true,
   "timezone": "Europe/Lisbon",
-  "gitAuthor": "hugobatista <hugobatista@users.noreply.github.com>",
+  "gitAuthor": "hugobatista <hugobatista@noreply.hugobatista.com>",
   "labels": [
     "dependencies"
   ],
