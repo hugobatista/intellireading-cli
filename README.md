@@ -156,7 +156,7 @@ from intellireading.client import (
     metaguide_epub_stream,
     metaguide_xhtml_stream,
     metaguide_dir,
-    is_file_metaguided
+    is_file_metaguided,
 )
 
 # Metaguide an EPUB file
@@ -181,11 +181,7 @@ from intellireading.client import metaguide_epub_file
 metaguide_epub_file("mybook.epub", "mybook_metaguided.epub")
 
 # Remove metaguiding (experimental)
-metaguide_epub_file(
-    "mybook_metaguided.epub", 
-    "mybook_original.epub", 
-    remove_metaguiding=True
-)
+metaguide_epub_file("mybook_metaguided.epub", "mybook_original.epub", remove_metaguiding=True)
 ```
 
 **`metaguide_epub_stream(input_stream: BytesIO, *, remove_metaguiding: bool = False) -> BytesIO`**
@@ -221,11 +217,7 @@ from intellireading.client import metaguide_xhtml_file
 metaguide_xhtml_file("article.html", "article_metaguided.html")
 
 # Remove metaguiding
-metaguide_xhtml_file(
-    "article_metaguided.html", 
-    "article_restored.html", 
-    remove_metaguiding=True
-)
+metaguide_xhtml_file("article_metaguided.html", "article_restored.html", remove_metaguiding=True)
 ```
 
 **`metaguide_xhtml_stream(input_file_stream: BytesIO, *, remove_metaguiding: bool = False) -> BytesIO`**
@@ -246,9 +238,9 @@ html_content = """
 </html>
 """
 
-input_stream = BytesIO(html_content.encode('utf-8'))
+input_stream = BytesIO(html_content.encode("utf-8"))
 output_stream = metaguide_xhtml_stream(input_stream)
-metaguided_content = output_stream.read().decode('utf-8')
+metaguided_content = output_stream.read().decode("utf-8")
 ```
 
 #### Directory Functions
@@ -295,18 +287,19 @@ from intellireading.client import metaguide_epub_stream
 
 app = Flask(__name__)
 
-@app.route('/metaguide', methods=['POST'])
+
+@app.route("/metaguide", methods=["POST"])
 def metaguide_upload():
-    file = request.files['epub']
-    if file and file.filename.endswith('.epub'):
+    file = request.files["epub"]
+    if file and file.filename.endswith(".epub"):
         input_stream = BytesIO(file.read())
         output_stream = metaguide_epub_stream(input_stream)
-        
+
         return send_file(
             output_stream,
             as_attachment=True,
             download_name=f"metaguided_{file.filename}",
-            mimetype='application/epub+zip'
+            mimetype="application/epub+zip",
         )
     return "Invalid file", 400
 ```
@@ -317,20 +310,22 @@ def metaguide_upload():
 import os
 from intellireading.client import metaguide_dir, is_file_metaguided
 
+
 def batch_process_library(library_path):
     """Process an entire library of EPUB files"""
     processed_path = os.path.join(library_path, "metaguided")
-    
+
     # Process all files
     metaguide_dir(library_path, processed_path)
-    
+
     # Verify results
     for root, dirs, files in os.walk(processed_path):
         for file in files:
-            if file.endswith('.epub'):
+            if file.endswith(".epub"):
                 filepath = os.path.join(root, file)
                 if is_file_metaguided(filepath):
                     print(f"✓ Successfully metaguided: {file}")
+
 
 batch_process_library("/path/to/my/books")
 ```
