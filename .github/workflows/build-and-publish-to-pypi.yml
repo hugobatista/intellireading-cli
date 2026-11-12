@@ -29,6 +29,8 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        resolution-strategy: lowest
 
     - name: Sync dev group
       run: uv sync --frozen --group dev --no-install-project

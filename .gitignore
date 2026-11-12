@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 .venv/
 *.json
+!renovate.json
 .debug
 .coverage
 coverage/
