@@ -117,6 +117,19 @@ To metaguide all files in a directory, use the `metaguide-dir` command. The comm
 > intellireading metaguide-dir --input_dir mydir --output_dir mydir_metaguided
 ```
 
+#### Control the fixation level
+The `--fixation` option controls how much of each word is bolded. It accepts values from `1` (least bold) to `5` (most bold) and defaults to `3`, which is the historical behaviour of IntelliReading.
+
+The option is available on `metaguide-epub`, `metaguide-xhtml`, and `metaguide-dir`:
+
+```console
+> intellireading metaguide-epub --input_file mybook.epub --output_file mybook_metaguided.epub --fixation 5
+```
+
+The public contract is the range `1`–`5`, the default `3`, and the fact that higher levels never bold less of each word (and usually bold more). The exact split point for each word is an implementation detail and may change.
+
+The fixation level only applies to new conversions. EPUB files that are already metaguided are copied unchanged. To apply a different level to an already metaguided EPUB, use `--remove_metaguiding` first and then metaguide the result again. Standalone XHTML files have no metaguided marker, so avoid running metaguiding twice on the same XHTML file.
+
 ## Experimental Features
 Some features are still experimental and may not work as expected. Use them with caution.
 
@@ -171,7 +184,7 @@ metaguide_xhtml_file("input.html", "output.html")
 
 #### EPUB Functions
 
-**`metaguide_epub_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False)`**
+**`metaguide_epub_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = 3)`**
 
 Metaguides an EPUB file by applying visual anchoring to text content within all XHTML files in the EPUB.
 
@@ -181,11 +194,14 @@ from intellireading.client import metaguide_epub_file
 # Basic metaguiding
 metaguide_epub_file("mybook.epub", "mybook_metaguided.epub")
 
+# Bold more of each word (levels go from 1 to 5, default is 3)
+metaguide_epub_file("mybook.epub", "mybook_metaguided.epub", fixation=5)
+
 # Remove metaguiding (experimental)
 metaguide_epub_file("mybook_metaguided.epub", "mybook_original.epub", remove_metaguiding=True)
 ```
 
-**`metaguide_epub_stream(input_stream: BytesIO, *, remove_metaguiding: bool = False) -> BytesIO`**
+**`metaguide_epub_stream(input_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = 3) -> BytesIO`**
 
 Metaguides an EPUB from a byte stream, useful for in-memory processing or web applications.
 
@@ -207,7 +223,7 @@ with open("output.epub", "wb") as f:
 
 #### XHTML Functions
 
-**`metaguide_xhtml_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False)`**
+**`metaguide_xhtml_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = 3)`**
 
 Metaguides an XHTML/HTML file by applying visual anchoring to text content. Supports `.xhtml`, `.html`, and `.htm` files.
 
@@ -221,7 +237,7 @@ metaguide_xhtml_file("article.html", "article_metaguided.html")
 metaguide_xhtml_file("article_metaguided.html", "article_restored.html", remove_metaguiding=True)
 ```
 
-**`metaguide_xhtml_stream(input_file_stream: BytesIO, *, remove_metaguiding: bool = False) -> BytesIO`**
+**`metaguide_xhtml_stream(input_file_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = 3) -> BytesIO`**
 
 Metaguides an XHTML/HTML file from a byte stream.
 
@@ -246,7 +262,7 @@ metaguided_content = output_stream.read().decode("utf-8")
 
 #### Directory Functions
 
-**`metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool = False)`**
+**`metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool = False, fixation: int = 3)`**
 
 Metaguides all EPUB and XHTML/HTML files found in a directory recursively.
 

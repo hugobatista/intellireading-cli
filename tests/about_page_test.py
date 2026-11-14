@@ -12,13 +12,13 @@ from intellireading.client.metaguiding import (
     _DONATION_URL,
     _METAGUIDED_FLAG_FILENAME,
     _WEBSITE_URL,
+    RegExBoldMetaguider,
     _EpubItemFile,
     _build_about_page,
     _find_opf_path,
     _inject_about_page,
     _is_apple_fixed_layout,
     _is_fixed_layout,
-    _metaguider,
     _remove_about_page,
     _resolve_href_paths,
     metaguide_epub_stream,
@@ -133,6 +133,18 @@ def test_metaguide_epub_adds_about_page() -> None:
         assert f'<a href="{_WEBSITE_URL}"><b>{_WEBSITE_URL}</b></a>' in page
         assert "<b>htt</b>ps://" not in page
         _assert_about_page_in_opf(zip_file.read("EPUB/package.opf"), page_path)
+
+
+def test_metaguide_epub_about_page_uses_fixation_level() -> None:
+    level_1 = _metaguide_input_epub(fixation=1)
+    level_5 = _metaguide_input_epub(fixation=5)
+
+    with zipfile.ZipFile(level_1) as zip_file:
+        page_level_1 = zip_file.read(f"EPUB/{_ABOUT_PAGE_FILENAME}").decode()
+    with zipfile.ZipFile(level_5) as zip_file:
+        page_level_5 = zip_file.read(f"EPUB/{_ABOUT_PAGE_FILENAME}").decode()
+
+    assert page_level_1 != page_level_5
 
 
 def test_metaguide_epub_removes_about_page() -> None:
@@ -427,7 +439,7 @@ def test_inject_about_page_skips_when_page_file_already_exists() -> None:
         [_EpubItemFile(f"OEBPS/{_ABOUT_PAGE_FILENAME}", b"existing page")],
     )
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
 
 
 def test_inject_about_page_skips_when_manifest_already_has_about_item() -> None:
@@ -436,14 +448,14 @@ def test_inject_about_page_skips_when_manifest_already_has_about_item() -> None:
     )
     items = _opf_items(opf)
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
 
 
 def test_inject_about_page_skips_when_spine_has_about_itemref_without_manifest_item() -> None:
     opf = _simple_opf("3.0", spine=f'<itemref idref="{_ABOUT_PAGE_MANIFEST_ID}"/>')
     items = _opf_items(opf)
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
 
     root = etree.fromstring(next(item for item in items if item.filename == "OEBPS/content.opf").content)
     assert not any(item.get("id") == _ABOUT_PAGE_MANIFEST_ID for item in _manifest_items(root))
@@ -456,7 +468,7 @@ def test_inject_about_page_skips_case_variant_page_file() -> None:
         [_EpubItemFile("OEBPS/IntelliReading-About.xhtml", b"existing page")],
     )
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
     assert not any(item.filename == f"OEBPS/{_ABOUT_PAGE_FILENAME}" for item in items)
 
 
@@ -468,7 +480,7 @@ def test_inject_about_page_skips_case_variant_manifest_item() -> None:
     )
     items = _opf_items(opf)
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
 
     root = etree.fromstring(next(item for item in items if item.filename == "OEBPS/content.opf").content)
     assert not any(item.get("id") == _ABOUT_PAGE_MANIFEST_ID for item in _manifest_items(root))
@@ -478,21 +490,21 @@ def test_inject_about_page_skips_when_xml_base_is_used() -> None:
     opf = _simple_opf("3.0", package_attributes=' xml:base="OEBPS"')
     items = _opf_items(opf)
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
 
 
 def test_inject_about_page_skips_without_manifest_or_spine() -> None:
     opf = f'<package xmlns="{_OPF_NS}" version="3.0"><metadata/></package>'
     items = _opf_items(opf)
 
-    assert not _inject_about_page(items)
+    assert not _inject_about_page(items, RegExBoldMetaguider())
 
 
 def test_inject_about_page_handles_opf_without_namespace() -> None:
     opf = _simple_opf("3.0").replace(f' xmlns="{_OPF_NS}"', "")
     items = _opf_items(opf)
 
-    assert _inject_about_page(items)
+    assert _inject_about_page(items, RegExBoldMetaguider())
     opf_item = next(item for item in items if item.filename == "OEBPS/content.opf")
     root = etree.fromstring(opf_item.content)
     assert root.find("manifest/item[@id='intellireading-about']") is not None
@@ -502,7 +514,7 @@ def test_inject_about_page_preserves_opf_doctype() -> None:
     opf = _simple_opf("3.0").replace("?>\n<package", "?>\n<!DOCTYPE package>\n<package")
     items = _opf_items(opf)
 
-    assert _inject_about_page(items)
+    assert _inject_about_page(items, RegExBoldMetaguider())
     opf_item = next(item for item in items if item.filename == "OEBPS/content.opf")
     assert b"<!DOCTYPE package>" in opf_item.content
 
@@ -574,6 +586,6 @@ def test_about_page_file_is_not_metaguided() -> None:
     item = _EpubItemFile(f"OEBPS/{_ABOUT_PAGE_FILENAME}", _CHAPTER_XHTML)
     original_content = item.content
 
-    item.metaguide(_metaguider)
+    item.metaguide(RegExBoldMetaguider())
 
     assert item.content == original_content

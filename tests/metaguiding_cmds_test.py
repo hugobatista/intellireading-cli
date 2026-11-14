@@ -1,4 +1,6 @@
 import contextlib
+import re
+import zipfile
 
 from click.testing import CliRunner
 from intellireading.client.commands import (
@@ -258,3 +260,151 @@ def test_metaguide_dir_cmd_with_remove_flag(tmp_path):
 
             # checks if there is any <b> tag in the output file
             assert "<b>" not in output_content
+
+
+_SAMPLE_XHTML = b"""<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body><p>reading metaguiding</p></body></html>"""
+
+
+def _write_sample_xhtml(filename: str) -> None:
+    with open(filename, "wb") as output_file:
+        output_file.write(_SAMPLE_XHTML)
+
+
+def test_metaguide_xhtml_cmd_with_fixation_level(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "output.xhtml", "--fixation", "1"],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output.xhtml", encoding="utf-8") as output_file:
+            output_content = output_file.read()
+
+        assert "<b>rea</b>ding" in output_content
+        assert "<b>meta</b>guiding" in output_content
+
+
+def test_metaguide_xhtml_cmd_fixation_level_five_bolds_more(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "output.xhtml", "--fixation", "5"],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output.xhtml", encoding="utf-8") as output_file:
+            output_content = output_file.read()
+
+        assert "<b>readi</b>ng" in output_content
+        assert "<b>metaguid</b>ing" in output_content
+
+
+def test_metaguide_xhtml_cmd_default_fixation_matches_level_three(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        default_result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "default.xhtml"],
+        )
+        explicit_result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "explicit.xhtml", "--fixation", "3"],
+        )
+
+        assert default_result.exit_code == 0
+        assert explicit_result.exit_code == 0
+
+        with open("default.xhtml", "rb") as default_file:
+            default_content = default_file.read()
+        with open("explicit.xhtml", "rb") as explicit_file:
+            explicit_content = explicit_file.read()
+
+        assert default_content == explicit_content
+
+
+def test_metaguide_xhtml_cmd_rejects_invalid_fixation_level(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "output.xhtml", "--fixation", "6"],
+        )
+
+        assert result.exit_code != 0
+        assert not os.path.exists("output.xhtml")
+
+
+_CHAPTER_PATH = "EPUB/xhtml/basic_tests.xhtml"
+
+
+def _chapter_bold_length_sum(epub_path: str) -> int:
+    with zipfile.ZipFile(epub_path) as zip_file:
+        content = zip_file.read(_CHAPTER_PATH).decode("utf-8")
+
+    return sum(len(bold) for bold in re.findall(r"<b>(.*?)</b>", content, re.DOTALL))
+
+
+def test_metaguide_epub_cmd_with_fixation_level(tmp_path):
+    runner = CliRunner()
+
+    epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
+
+    with contextlib.chdir(tmp_path):
+        level_1_result = runner.invoke(
+            metaguide_epub_cmd,
+            ["--input_file", epub_test_file, "--output_file", "level_1.epub", "--fixation", "1"],
+        )
+        level_5_result = runner.invoke(
+            metaguide_epub_cmd,
+            ["--input_file", epub_test_file, "--output_file", "level_5.epub", "--fixation", "5"],
+        )
+
+        assert level_1_result.exit_code == 0
+        assert level_5_result.exit_code == 0
+        assert _chapter_bold_length_sum("level_1.epub") < _chapter_bold_length_sum("level_5.epub")
+
+
+def test_metaguide_dir_cmd_with_fixation_level(tmp_path):
+    runner = CliRunner()
+
+    test_dir = os.path.join(os.path.dirname(__file__), "test_files")
+
+    with contextlib.chdir(tmp_path):
+        level_one_result = runner.invoke(
+            metaguide_dir_cmd,
+            ["--input_dir", test_dir, "--output_dir", "output_level_1", "--fixation", "1"],
+        )
+        level_five_result = runner.invoke(
+            metaguide_dir_cmd,
+            ["--input_dir", test_dir, "--output_dir", "output_level_5", "--fixation", "5"],
+        )
+
+        assert level_one_result.exit_code == 0
+        assert level_five_result.exit_code == 0
+
+        with open("output_level_1/input.xhtml", encoding="utf-8") as level_one_file:
+            level_one_content = level_one_file.read()
+        with open("output_level_5/input.xhtml", encoding="utf-8") as level_five_file:
+            level_five_content = level_five_file.read()
+
+        assert "<b>" in level_one_content
+        assert "<b>" in level_five_content
+        assert level_one_content != level_five_content

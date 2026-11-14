@@ -12,6 +12,7 @@ Intellireading CLI is a standalone tool and Python library that applies metaguid
 - **XHTML/HTML Processing**: Process individual web pages and documents
 - **Batch Processing**: Process entire directories recursively
 - **Stream Support**: Memory-efficient processing for web applications
+- **Fixation Levels**: Five configurable boldness levels (1-5) for different reading needs
 - **Reversible**: Experimental feature to remove metaguiding
 - **CLI Interface**: Command-line tool for standalone use
 - **Python Library**: Programmatic API for integration
@@ -48,9 +49,11 @@ tests/
 
 The metaguiding process:
 1. **Word Detection**: Uses regex to identify words in text content
-2. **Bold Application**: Bolds the first portion of each word:
-   - 1-3 character words: Bold first character
-   - 4+ character words: Bold first half (rounded up)
+2. **Bold Application**: Bolds the first portion of each word according to the fixation level:
+   - Levels 1-5 target 30%, 40%, 50%, 60%, and 70% of each word's characters, subject to the minimum and clamp rules below
+   - The default level is 3 (50%, the historical behaviour)
+   - At least one character is always bolded; for words longer than one character, at least one character is left unbolded
+   - Three letter words keep a single bolded character at levels up to the default level (currently 1-3)
 3. **HTML Preservation**: Maintains existing HTML structure and entities
 4. **Selective Processing**: Skips navigation files (TOC) in EPUB files
 
@@ -80,6 +83,9 @@ from intellireading.client import metaguide_epub_file, metaguide_xhtml_file
 # Process EPUB
 metaguide_epub_file("book.epub", "book_metaguided.epub")
 
+# Process EPUB with a stronger fixation level (1-5, default 3)
+metaguide_epub_file("book.epub", "book_metaguided.epub", fixation=5)
+
 # Process HTML
 metaguide_xhtml_file("article.html", "article_metaguided.html")
 ```
@@ -108,11 +114,14 @@ metaguide_dir("input_books/", "output_books/")
 # Metaguide an EPUB file
 intellireading metaguide-epub --input_file book.epub --output_file book_metaguided.epub
 
+# Metaguide with a stronger fixation level (1-5, default 3)
+intellireading metaguide-epub --input_file book.epub --output_file book_metaguided.epub --fixation 5
+
 # Metaguide an HTML file
 intellireading metaguide-xhtml --input_file page.html --output_file page_metaguided.html
 
 # Process directory
-intellireading metaguide-dir --input_dir books/ --output_dir books_metaguided/
+intellireading metaguide-dir --input_dir books/ --output_dir books_metaguided/ --fixation 2
 
 # Remove metaguiding (experimental)
 intellireading metaguide-epub --remove_metaguiding --input_file book_metaguided.epub --output_file book_original.epub

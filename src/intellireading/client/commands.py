@@ -1,7 +1,13 @@
 import click
 import logging
 import sys
-from intellireading.client.metaguiding import metaguide_epub_file, metaguide_dir, metaguide_xhtml_file
+from intellireading.client.metaguiding import (
+    DEFAULT_FIXATION,
+    FIXATION_LEVELS,
+    metaguide_epub_file,
+    metaguide_dir,
+    metaguide_xhtml_file,
+)
 from typing import Any, cast
 from collections.abc import Callable
 
@@ -60,6 +66,14 @@ _no_about_page_option = click.option(
     help="Do not add the IntelliReading about/donation page to the end of EPUB files",
 )
 
+_fixation_option = click.option(
+    "--fixation",
+    type=click.IntRange(min(FIXATION_LEVELS), max(FIXATION_LEVELS)),
+    default=DEFAULT_FIXATION,
+    show_default=True,
+    help="How much of each word is bolded, from 1 (least) to 5 (most)",
+)
+
 
 def _exit_with_exception(exception: Exception, exit_code: int = 1, fg: str = "red") -> None:
     """Exit the program with an exception and exit code"""
@@ -102,6 +116,7 @@ def _get_from_ctx_if_none(
 @_output_file_option
 @_remove_metaguiding_option
 @_no_about_page_option
+@_fixation_option
 def metaguide_epub_cmd(
     ctx: click.Context,
     input_file: str,
@@ -109,6 +124,7 @@ def metaguide_epub_cmd(
     *,
     remove_metaguiding: bool,
     no_about_page: bool,
+    fixation: int = DEFAULT_FIXATION,
 ) -> None:
     """Applies or removes metaguiding to the provided epub/kepub file"""
 
@@ -129,6 +145,7 @@ def metaguide_epub_cmd(
             output_file,
             remove_metaguiding=remove_metaguiding,
             include_about_page=not no_about_page,
+            fixation=fixation,
         )
 
         # store the output file in the context for chaining commands
@@ -146,6 +163,7 @@ def metaguide_epub_cmd(
 @_output_dir_option
 @_remove_metaguiding_option
 @_no_about_page_option
+@_fixation_option
 def metaguide_dir_cmd(
     ctx: click.Context,
     input_dir: str,
@@ -153,6 +171,7 @@ def metaguide_dir_cmd(
     *,
     remove_metaguiding: bool,
     no_about_page: bool,
+    fixation: int = DEFAULT_FIXATION,
 ) -> None:
     """Applies metaguiding to the provided directory, recursively, for all epubs and xhtml files found in the directory
     input_dir: str
@@ -183,6 +202,7 @@ def metaguide_dir_cmd(
             output_dir,
             remove_metaguiding=remove_metaguiding,
             include_about_page=not no_about_page,
+            fixation=fixation,
         )
     except Exception as e:
         _exit_with_exception(e)
@@ -196,7 +216,15 @@ def metaguide_dir_cmd(
 @_input_file_option
 @_output_file_option
 @_remove_metaguiding_option
-def metaguide_xhtml_cmd(ctx: click.Context, input_file: str, output_file: str, *, remove_metaguiding: bool) -> None:
+@_fixation_option
+def metaguide_xhtml_cmd(
+    ctx: click.Context,
+    input_file: str,
+    output_file: str,
+    *,
+    remove_metaguiding: bool,
+    fixation: int = DEFAULT_FIXATION,
+) -> None:
     """Applies or removes metaguiding to the provided xhtml file"""
 
     try:
@@ -211,7 +239,7 @@ def metaguide_xhtml_cmd(ctx: click.Context, input_file: str, output_file: str, *
         output_file = _get_from_ctx_if_none(ctx, "output_file", output_file, lambda: click.prompt("The output file"))
         click.echo(f"Output file: {output_file}")
 
-        metaguide_xhtml_file(input_file, output_file, remove_metaguiding=remove_metaguiding)
+        metaguide_xhtml_file(input_file, output_file, remove_metaguiding=remove_metaguiding, fixation=fixation)
 
         # store the output file in the context for chaining commands
         ctx.obj["output_file"] = output_file
