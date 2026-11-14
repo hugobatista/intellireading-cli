@@ -130,6 +130,17 @@ The public contract is the range `1`–`5`, the default `3`, and the fact that h
 
 The fixation level only applies to new conversions. EPUB files that are already metaguided are copied unchanged. To apply a different level to an already metaguided EPUB, use `--remove_metaguiding` first and then metaguide the result again. Standalone XHTML files have no metaguided marker, so avoid running metaguiding twice on the same XHTML file.
 
+#### What gets metaguided
+Metaguiding only changes prose text inside the document body. The following content is preserved byte-for-byte:
+
+- `<style>` and `<script>` elements (CSS and JavaScript)
+- `<pre>` and `<code>` elements (preformatted text and code samples)
+- `<text>` and `<tspan>` elements in SVG
+- CDATA sections
+- HTML comments
+
+This keeps stylesheets, scripts and embedded SVG content valid. Elements that are not listed above (for example MathML text elements or `<textarea>`) are still metaguided, so bold tags may be inserted into them. Removal of metaguiding keeps its previous behaviour and can still clean up bold tags added to these regions by older versions.
+
 ## Experimental Features
 Some features are still experimental and may not work as expected. Use them with caution.
 
