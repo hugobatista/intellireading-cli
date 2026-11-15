@@ -46,6 +46,7 @@ def _simple_opf(
     manifest: str = "",
     spine: str = "",
     package_attributes: str = "",
+    spine_attributes: str = "",
 ) -> str:
     return f"""<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="{_OPF_NS}" version="{version}" unique-identifier="uid"{package_attributes}>
@@ -59,7 +60,7 @@ def _simple_opf(
     <item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/>
     {manifest}
   </manifest>
-  <spine>
+  <spine{spine_attributes}>
     <itemref idref="chapter"/>
     {spine}
   </spine>
@@ -134,6 +135,10 @@ def test_metaguide_epub_adds_about_page() -> None:
         assert "<b>htt</b>ps://" not in page
         _assert_about_page_in_opf(zip_file.read("EPUB/package.opf"), page_path)
 
+        nav = zip_file.read("EPUB/xhtml/nav.xhtml").decode()
+        assert nav.count(_ABOUT_PAGE_FILENAME) == 1
+        assert "../intellireading-about.xhtml" in nav
+
 
 def test_metaguide_epub_about_page_uses_fixation_level() -> None:
     level_1 = _metaguide_input_epub(fixation=1)
@@ -159,6 +164,9 @@ def test_metaguide_epub_removes_about_page() -> None:
         root = etree.fromstring(zip_file.read("EPUB/package.opf"))
         assert not any(item.get("id") == _ABOUT_PAGE_MANIFEST_ID for item in _manifest_items(root))
         assert not any(itemref.get("idref") == _ABOUT_PAGE_MANIFEST_ID for itemref in _spine_items(root))
+
+        nav = zip_file.read("EPUB/xhtml/nav.xhtml").decode()
+        assert _ABOUT_PAGE_FILENAME not in nav
 
         for filename in zip_file.namelist():
             if filename.endswith((".xhtml", ".html")):
@@ -589,3 +597,62 @@ def test_about_page_file_is_not_metaguided() -> None:
     item.metaguide(RegExBoldMetaguider())
 
     assert item.content == original_content
+
+
+_NCX = """<?xml version="1.0" encoding="utf-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head>
+    <meta name="dtb:uid" content="test-book"/>
+  </head>
+  <docTitle><text>Test Book</text></docTitle>
+  <navMap>
+    <navPoint id="chapter" playOrder="1">
+      <navLabel><text>Chapter</text></navLabel>
+      <content src="chapter.xhtml"/>
+    </navPoint>
+  </navMap>
+</ncx>"""
+
+
+def _build_ncx_epub() -> bytes:
+    opf = _simple_opf(
+        "2.0",
+        manifest='<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>',
+        spine_attributes=' toc="ncx"',
+    )
+    return _build_epub(
+        {
+            "META-INF/container.xml": _CONTAINER_XML,
+            "OEBPS/content.opf": opf,
+            "OEBPS/chapter.xhtml": _CHAPTER_XHTML,
+            "OEBPS/toc.ncx": _NCX,
+        }
+    )
+
+
+def test_metaguide_epub_adds_about_page_to_ncx() -> None:
+    output = metaguide_epub_stream(BytesIO(_build_ncx_epub()))
+
+    with zipfile.ZipFile(output) as zip_file:
+        ncx = zip_file.read("OEBPS/toc.ncx").decode()
+        assert "intellireading-about.xhtml" in ncx
+        assert "Thank you for using IntelliReading" in ncx
+
+        root = etree.fromstring(ncx.encode())
+        nav_points = [element for element in root.iter() if element.tag.endswith("navPoint")]
+        about_content = [
+            element
+            for element in root.iter()
+            if element.tag.endswith("content") and element.get("src") == "intellireading-about.xhtml"
+        ]
+        assert len(nav_points) == 2
+        assert len(about_content) == 1
+
+
+def test_metaguide_epub_removes_about_page_from_ncx() -> None:
+    metaguided = metaguide_epub_stream(BytesIO(_build_ncx_epub()))
+    removed = metaguide_epub_stream(BytesIO(metaguided.getvalue()), remove_metaguiding=True)
+
+    with zipfile.ZipFile(removed) as zip_file:
+        ncx = zip_file.read("OEBPS/toc.ncx").decode()
+        assert "intellireading-about.xhtml" not in ncx

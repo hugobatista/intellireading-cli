@@ -641,6 +641,237 @@ def _serialize_opf_document(tree: Any) -> bytes:
     )
 
 
+def _find_manifest_item_path(
+    epub_item_files: list[_EpubItemFile],
+    manifest: Any,
+    opf_dir: str,
+    *,
+    property_name: str | None = None,
+    media_type: str | None = None,
+) -> _EpubItemFile | None:
+    for item in manifest:
+        if _get_local_name(item) != "item":
+            continue
+        href = item.get("href")
+        if not href:
+            continue
+        if property_name is not None and property_name not in (item.get("properties") or "").split():
+            continue
+        if media_type is not None and item.get("media-type") != media_type:
+            continue
+        candidates = _resolve_href_paths(opf_dir, href)
+        epub_item_file = next((f for f in epub_item_files if f.filename in candidates), None)
+        if epub_item_file is not None:
+            return epub_item_file
+    return None
+
+
+def _toc_href(toc_filename: str, target_filename: str) -> str:
+    toc_dir = posixpath.dirname(toc_filename) or "."
+    return posixpath.relpath(target_filename, toc_dir)
+
+
+def _add_about_page_to_nav(nav_item: _EpubItemFile, page_path: str) -> bool:
+    try:
+        from lxml import etree
+
+        parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True, remove_blank_text=False)
+        tree = etree.fromstring(nav_item.content, parser).getroottree()
+        nav_root = tree.getroot()
+    except Exception as e:
+        _logger.warning(f"Could not parse navigation document '{nav_item.filename}': {e}")
+        return False
+
+    if nav_root.get(_XML_BASE_ATTRIBUTE):
+        _logger.warning(f"Navigation document '{nav_item.filename}' uses xml:base, skipping ToC update")
+        return False
+
+    toc_nav = None
+    for element in nav_root.iter():
+        if _get_local_name(element) != "nav":
+            continue
+        epub_type = element.get("{http://www.idpf.org/2007/ops}type") or element.get("type") or ""
+        if "toc" in epub_type.split():
+            toc_nav = element
+            break
+    if toc_nav is None:
+        toc_nav = next((element for element in nav_root.iter() if _get_local_name(element) == "nav"), None)
+    if toc_nav is None:
+        _logger.warning(f"Navigation document '{nav_item.filename}' has no <nav>, skipping ToC update")
+        return False
+
+    toc_list = next(
+        (child for child in toc_nav if _get_local_name(child) in ("ol", "ul")),
+        None,
+    )
+    if toc_list is None:
+        _logger.warning(f"Navigation document '{nav_item.filename}' has no <ol>, skipping ToC update")
+        return False
+
+    about_page_filename = _ABOUT_PAGE_FILENAME.lower()
+    for link in toc_list.iter():
+        if _get_local_name(link) != "a":
+            continue
+        href = link.get("href")
+        if href and _href_basename(href) == about_page_filename:
+            _logger.debug(f"About page is already listed in '{nav_item.filename}'")
+            return False
+
+    li = etree.SubElement(toc_list, _qualified_tag(toc_list, "li"))
+    link = etree.SubElement(li, _qualified_tag(toc_list, "a"))
+    link.set("href", _toc_href(nav_item.filename or "", page_path))
+    link.text = _ABOUT_PAGE_TITLE
+    nav_item.content = _serialize_opf_document(tree)
+    _logger.info(f"Added about page to navigation document '{nav_item.filename}'")
+    return True
+
+
+def _add_about_page_to_ncx(ncx_item: _EpubItemFile, page_path: str) -> bool:
+    try:
+        from lxml import etree
+
+        parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True, remove_blank_text=False)
+        tree = etree.fromstring(ncx_item.content, parser).getroottree()
+        ncx_root = tree.getroot()
+    except Exception as e:
+        _logger.warning(f"Could not parse NCX document '{ncx_item.filename}': {e}")
+        return False
+
+    if ncx_root.get(_XML_BASE_ATTRIBUTE):
+        _logger.warning(f"NCX document '{ncx_item.filename}' uses xml:base, skipping ToC update")
+        return False
+
+    nav_map = next((element for element in ncx_root.iter() if _get_local_name(element) == "navMap"), None)
+    if nav_map is None:
+        _logger.warning(f"NCX document '{ncx_item.filename}' has no <navMap>, skipping ToC update")
+        return False
+
+    about_page_filename = _ABOUT_PAGE_FILENAME.lower()
+    for content in nav_map.iter():
+        if _get_local_name(content) != "content":
+            continue
+        src = content.get("src")
+        if src and _href_basename(src) == about_page_filename:
+            _logger.debug(f"About page is already listed in '{ncx_item.filename}'")
+            return False
+
+    play_order = 1
+    for nav_point in nav_map.iter():
+        if _get_local_name(nav_point) != "navPoint":
+            continue
+        try:
+            play_order = max(play_order, int(nav_point.get("playOrder", "0")) + 1)
+        except (TypeError, ValueError):
+            continue
+
+    nav_point = etree.SubElement(nav_map, _qualified_tag(nav_map, "navPoint"))
+    nav_point.set("id", _ABOUT_PAGE_MANIFEST_ID)
+    nav_point.set("playOrder", str(play_order))
+    nav_label = etree.SubElement(nav_point, _qualified_tag(nav_map, "navLabel"))
+    text = etree.SubElement(nav_label, _qualified_tag(nav_map, "text"))
+    text.text = _ABOUT_PAGE_TITLE
+    content = etree.SubElement(nav_point, _qualified_tag(nav_map, "content"))
+    content.set("src", _toc_href(ncx_item.filename or "", page_path))
+    ncx_item.content = _serialize_opf_document(tree)
+    _logger.info(f"Added about page to NCX document '{ncx_item.filename}'")
+    return True
+
+
+def _add_about_page_to_toc(epub_item_files: list[_EpubItemFile], manifest: Any, opf_dir: str, page_path: str) -> bool:
+    updated = False
+    nav_item = _find_manifest_item_path(epub_item_files, manifest, opf_dir, property_name="nav")
+    if nav_item is not None:
+        updated = _add_about_page_to_nav(nav_item, page_path) or updated
+    ncx_item = _find_manifest_item_path(epub_item_files, manifest, opf_dir, media_type="application/x-dtbncx+xml")
+    if ncx_item is not None:
+        updated = _add_about_page_to_ncx(ncx_item, page_path) or updated
+    return updated
+
+
+def _remove_about_page_from_nav(nav_item: _EpubItemFile) -> bool:
+    try:
+        from lxml import etree
+
+        parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True, remove_blank_text=False)
+        tree = etree.fromstring(nav_item.content, parser).getroottree()
+        nav_root = tree.getroot()
+    except Exception as e:
+        _logger.warning(f"Could not parse navigation document '{nav_item.filename}': {e}")
+        return False
+
+    if nav_root.get(_XML_BASE_ATTRIBUTE):
+        return False
+
+    about_page_filename = _ABOUT_PAGE_FILENAME.lower()
+    removed = False
+    for link in list(nav_root.iter()):
+        if _get_local_name(link) != "a":
+            continue
+        href = link.get("href")
+        if not href or _href_basename(href) != about_page_filename:
+            continue
+        parent = link.getparent()
+        if parent is None:
+            continue
+        if _get_local_name(parent) == "li" and parent.getparent() is not None:
+            parent.getparent().remove(parent)
+        else:
+            parent.remove(link)
+        removed = True
+
+    if removed:
+        nav_item.content = _serialize_opf_document(tree)
+        _logger.info(f"Removed about page from navigation document '{nav_item.filename}'")
+    return removed
+
+
+def _remove_about_page_from_ncx(ncx_item: _EpubItemFile) -> bool:
+    try:
+        from lxml import etree
+
+        parser = etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True, remove_blank_text=False)
+        tree = etree.fromstring(ncx_item.content, parser).getroottree()
+        ncx_root = tree.getroot()
+    except Exception as e:
+        _logger.warning(f"Could not parse NCX document '{ncx_item.filename}': {e}")
+        return False
+
+    if ncx_root.get(_XML_BASE_ATTRIBUTE):
+        return False
+
+    about_page_filename = _ABOUT_PAGE_FILENAME.lower()
+    removed = False
+    for nav_point in list(ncx_root.iter()):
+        if _get_local_name(nav_point) != "navPoint":
+            continue
+        content = next((child for child in nav_point if _get_local_name(child) == "content"), None)
+        if content is None:
+            continue
+        src = content.get("src")
+        if not src or _href_basename(src) != about_page_filename:
+            continue
+        parent = nav_point.getparent()
+        if parent is not None:
+            parent.remove(nav_point)
+            removed = True
+
+    if removed:
+        ncx_item.content = _serialize_opf_document(tree)
+        _logger.info(f"Removed about page from NCX document '{ncx_item.filename}'")
+    return removed
+
+
+def _remove_about_page_from_toc(epub_item_files: list[_EpubItemFile], manifest: Any, opf_dir: str) -> bool:
+    updated = False
+    nav_item = _find_manifest_item_path(epub_item_files, manifest, opf_dir, property_name="nav")
+    if nav_item is not None:
+        updated = _remove_about_page_from_nav(nav_item) or updated
+    ncx_item = _find_manifest_item_path(epub_item_files, manifest, opf_dir, media_type="application/x-dtbncx+xml")
+    if ncx_item is not None:
+        updated = _remove_about_page_from_ncx(ncx_item) or updated
+    return updated
+
+
 def _inject_about_page(epub_item_files: list[_EpubItemFile], metaguider: RegExBoldMetaguider) -> bool:
     opf_path = _find_opf_path(epub_item_files)
     if not opf_path:
@@ -706,6 +937,11 @@ def _inject_about_page(epub_item_files: list[_EpubItemFile], metaguider: RegExBo
         _logger.warning(f"Could not serialize OPF file '{opf_path}', skipping about page: {e}")
         return False
 
+    try:
+        _add_about_page_to_toc(epub_item_files, manifest, opf_dir, page_path)
+    except Exception as e:
+        _logger.warning(f"Could not add the about page to the ToC: {e}")
+
     epub_item_files.append(_EpubItemFile(page_path, page_content))
     _logger.info(f"Added IntelliReading about page to '{opf_path}'")
     return True
@@ -770,6 +1006,10 @@ def _remove_about_page(epub_item_files: list[_EpubItemFile]) -> bool:
             _logger.warning(f"Could not serialize OPF file '{opf_path}', cannot remove the about page: {e}")
             return False
 
+    removed_toc_entries = (
+        _remove_about_page_from_toc(epub_item_files, manifest, opf_dir) if manifest is not None else False
+    )
+
     original_file_count = len(epub_item_files)
     removed_paths_lower = {path.lower() for path in removed_paths}
     about_page_filename = _ABOUT_PAGE_FILENAME.lower()
@@ -786,7 +1026,7 @@ def _remove_about_page(epub_item_files: list[_EpubItemFile]) -> bool:
     ]
     removed_page_file = len(epub_item_files) != original_file_count
 
-    if removed_opf_entries or removed_page_file:
+    if removed_opf_entries or removed_page_file or removed_toc_entries:
         _logger.info(f"Removed IntelliReading about page from '{opf_path}'")
         return True
 
