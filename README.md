@@ -130,6 +130,30 @@ The public contract is the range `1`–`5`, the default `3`, and the fact that h
 
 The fixation level only applies to new conversions. EPUB files that are already metaguided are copied unchanged. To apply a different level to an already metaguided EPUB, use `--remove_metaguiding` first and then metaguide the result again. Standalone XHTML files have no metaguided marker, so avoid running metaguiding twice on the same XHTML file.
 
+#### Control the bold style
+The `--bold_style` option controls how the bold part of each word is rendered. It accepts:
+
+- `tag` (default) — uses `<b>` and the font's real bold face;
+- `shadow` — uses `<b class="ir-bold">` plus a CSS `text-shadow`, which keeps the original font metrics;
+- `stroke` — uses `<b class="ir-bold">` plus a CSS `-webkit-text-stroke`, which also keeps the original font metrics.
+
+The visual modes (`shadow` and `stroke`) are intended for Kobo kepubs and other WebKit-based readers. They avoid the page count changes that real bold can cause on Kobo, because the text keeps the same width and line breaks. On readers that do not support those CSS properties, the text may render without emphasis; use `tag` for maximum compatibility.
+
+The option is available on `metaguide-epub`, `metaguide-xhtml`, and `metaguide-dir`:
+
+```console
+> intellireading metaguide-epub --input_file mybook.epub --output_file mybook_metaguided.epub --bold_style shadow
+```
+
+#### Control the bold intensity
+The `--bold_intensity` option controls how strong the visual bold effect is when `--bold_style` is `shadow` or `stroke`. It accepts values from `1` (subtle) to `5` (strongest) and defaults to `3`.
+
+```console
+> intellireading metaguide-epub --input_file mybook.epub --output_file mybook_metaguided.epub --bold_style shadow --bold_intensity 5
+```
+
+The intensity only affects the visual modes. With `--bold_style tag` the option is ignored, because the real bold face is used.
+
 #### What gets metaguided
 Metaguiding only changes prose text inside the document body. The following content is preserved byte-for-byte:
 
@@ -195,7 +219,7 @@ metaguide_xhtml_file("input.html", "output.html")
 
 #### EPUB Functions
 
-**`metaguide_epub_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = 3)`**
+**`metaguide_epub_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = 3, bold_style: str = "tag", bold_intensity: int = 3)`**
 
 Metaguides an EPUB file by applying visual anchoring to text content within all XHTML files in the EPUB.
 
@@ -208,11 +232,17 @@ metaguide_epub_file("mybook.epub", "mybook_metaguided.epub")
 # Bold more of each word (levels go from 1 to 5, default is 3)
 metaguide_epub_file("mybook.epub", "mybook_metaguided.epub", fixation=5)
 
+# Use visual bold (keeps the original font metrics and page count on Kobo kepubs)
+metaguide_epub_file("mybook.epub", "mybook_metaguided.epub", bold_style="shadow")
+
+# Use a stronger visual bold effect (intensity goes from 1 to 5, default is 3)
+metaguide_epub_file("mybook.epub", "mybook_metaguided.epub", bold_style="shadow", bold_intensity=5)
+
 # Remove metaguiding (experimental)
 metaguide_epub_file("mybook_metaguided.epub", "mybook_original.epub", remove_metaguiding=True)
 ```
 
-**`metaguide_epub_stream(input_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = 3) -> BytesIO`**
+**`metaguide_epub_stream(input_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = 3, bold_style: str = "tag", bold_intensity: int = 3) -> BytesIO`**
 
 Metaguides an EPUB from a byte stream, useful for in-memory processing or web applications.
 
@@ -234,7 +264,7 @@ with open("output.epub", "wb") as f:
 
 #### XHTML Functions
 
-**`metaguide_xhtml_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = 3)`**
+**`metaguide_xhtml_file(input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = 3, bold_style: str = "tag", bold_intensity: int = 3)`**
 
 Metaguides an XHTML/HTML file by applying visual anchoring to text content. Supports `.xhtml`, `.html`, and `.htm` files.
 
@@ -248,7 +278,7 @@ metaguide_xhtml_file("article.html", "article_metaguided.html")
 metaguide_xhtml_file("article_metaguided.html", "article_restored.html", remove_metaguiding=True)
 ```
 
-**`metaguide_xhtml_stream(input_file_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = 3) -> BytesIO`**
+**`metaguide_xhtml_stream(input_file_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = 3, bold_style: str = "tag", bold_intensity: int = 3) -> BytesIO`**
 
 Metaguides an XHTML/HTML file from a byte stream.
 
@@ -273,7 +303,7 @@ metaguided_content = output_stream.read().decode("utf-8")
 
 #### Directory Functions
 
-**`metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool = False, fixation: int = 3)`**
+**`metaguide_dir(input_dir: str, output_dir: str, *, remove_metaguiding: bool = False, fixation: int = 3, bold_style: str = "tag", bold_intensity: int = 3)`**
 
 Metaguides all EPUB and XHTML/HTML files found in a directory recursively.
 

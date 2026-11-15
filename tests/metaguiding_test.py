@@ -7,7 +7,14 @@ import pytest
 from lxml import etree
 
 from intellireading.client import metaguide_dir, metaguide_epub_stream
-from intellireading.client.metaguiding import DEFAULT_FIXATION, FIXATION_LEVELS, RegExBoldMetaguider
+from intellireading.client.metaguiding import (
+    BOLD_INTENSITIES,
+    DEFAULT_BOLD_INTENSITY,
+    DEFAULT_BOLD_STYLE,
+    DEFAULT_FIXATION,
+    FIXATION_LEVELS,
+    RegExBoldMetaguider,
+)
 
 _TRUNCATED_XML_HEADER = b'<?xml version="1.0" encoding="utf-8"'
 _TRUNCATED_HEADER_WITH_BODY = _TRUNCATED_XML_HEADER + b"<html><body><p>hello world</p></body></html>"
@@ -409,6 +416,120 @@ def test_fixation_levels_are_one_to_five() -> None:
 
 _INPUT_EPUB = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
 _CHAPTER_PATH = "EPUB/xhtml/basic_tests.xhtml"
+
+
+def test_default_bold_style_is_tag() -> None:
+    assert DEFAULT_BOLD_STYLE == "tag"
+    assert RegExBoldMetaguider()._bold_word("word") == "<b>wo</b>rd"
+
+
+@pytest.mark.parametrize(
+    ("bold_style", "css_fragment"),
+    [
+        ("shadow", "text-shadow"),
+        ("stroke", "-webkit-text-stroke"),
+    ],
+)
+def test_visual_bold_style_uses_class_and_css(bold_style: str, css_fragment: str) -> None:
+    metaguider = RegExBoldMetaguider(bold_style=bold_style)
+    document = b"<html><head><title>t</title></head><body><p>Normal text here.</p></body></html>"
+
+    result = metaguider.metaguide_xhtml_document(document)
+
+    assert b'class="ir-bold"' in result
+    assert b"intellireading-bold-style" in result
+    assert css_fragment.encode() in result
+    assert b"<b>Nor</b>" not in result
+
+
+def test_visual_bold_style_removal_removes_class_and_css() -> None:
+    metaguider = RegExBoldMetaguider(bold_style="shadow")
+    document = b"<html><head><title>t</title></head><body><p>Normal text here.</p></body></html>"
+    metaguided = metaguider.metaguide_xhtml_document(document)
+
+    result = metaguider.metaguide_xhtml_document(metaguided, remove_metaguiding=True)
+
+    assert b'class="ir-bold"' not in result
+    assert b"intellireading-bold-style" not in result
+    assert b"Normal text here." in result
+
+
+@pytest.mark.parametrize("bold_style", ["invalid", "", None, 3])
+def test_invalid_bold_style_raises(bold_style: object) -> None:
+    with pytest.raises(ValueError, match="Invalid bold style"):
+        RegExBoldMetaguider(bold_style=bold_style)  # type: ignore[arg-type]
+
+
+def test_default_bold_intensity_is_three() -> None:
+    assert DEFAULT_BOLD_INTENSITY == 3
+    assert BOLD_INTENSITIES == (1, 2, 3, 4, 5)
+
+
+@pytest.mark.parametrize(
+    ("bold_style", "intensity", "expected"),
+    [
+        ("shadow", 1, "text-shadow: 0.02em 0 0 currentColor, -0.02em 0 0 currentColor"),
+        ("shadow", 3, "text-shadow: 0.04em 0 0 currentColor, -0.04em 0 0 currentColor"),
+        ("shadow", 5, "text-shadow: 0.06em 0 0 currentColor, -0.06em 0 0 currentColor"),
+        ("stroke", 1, "-webkit-text-stroke: 0.015em currentColor"),
+        ("stroke", 3, "-webkit-text-stroke: 0.035em currentColor"),
+        ("stroke", 5, "-webkit-text-stroke: 0.055em currentColor"),
+    ],
+)
+def test_bold_intensity_scales_visual_css(bold_style: str, intensity: int, expected: str) -> None:
+    metaguider = RegExBoldMetaguider(bold_style=bold_style, bold_intensity=intensity)
+    document = b"<html><head><title>t</title></head><body><p>Normal text here.</p></body></html>"
+
+    result = metaguider.metaguide_xhtml_document(document)
+
+    assert expected.encode() in result
+
+
+@pytest.mark.parametrize("intensity", [0, 6, -1])
+def test_invalid_bold_intensity_raises(intensity: int) -> None:
+    with pytest.raises(ValueError, match="Invalid bold intensity"):
+        RegExBoldMetaguider(bold_intensity=intensity)
+
+
+@pytest.mark.parametrize("intensity", [True, 2.0, "3", None])
+def test_invalid_bold_intensity_type_raises(intensity: object) -> None:
+    with pytest.raises(ValueError, match="Invalid bold intensity"):
+        RegExBoldMetaguider(bold_intensity=intensity)  # type: ignore[arg-type]
+
+
+def test_bold_intensity_does_not_apply_to_tag() -> None:
+    metaguider = RegExBoldMetaguider(bold_style="tag", bold_intensity=5)
+    document = b"<html><head><title>t</title></head><body><p>Normal text here.</p></body></html>"
+
+    result = metaguider.metaguide_xhtml_document(document)
+
+    assert b"intellireading-bold-style" not in result
+    assert b"text-shadow" not in result
+
+
+def test_metaguide_epub_stream_uses_visual_bold_style() -> None:
+    with open(_INPUT_EPUB, "rb") as input_file:
+        output = metaguide_epub_stream(BytesIO(input_file.read()), bold_style="shadow", include_about_page=False)
+
+    with zipfile.ZipFile(output) as zip_file:
+        content = zip_file.read(_CHAPTER_PATH).decode("utf-8")
+
+    assert 'class="ir-bold"' in content
+    assert "intellireading-bold-style" in content
+    assert "text-shadow" in content
+
+
+def test_metaguide_epub_stream_removes_visual_bold_style() -> None:
+    with open(_INPUT_EPUB, "rb") as input_file:
+        metaguided = metaguide_epub_stream(BytesIO(input_file.read()), bold_style="shadow", include_about_page=False)
+
+    removed = metaguide_epub_stream(BytesIO(metaguided.getvalue()), remove_metaguiding=True)
+
+    with zipfile.ZipFile(removed) as zip_file:
+        content = zip_file.read(_CHAPTER_PATH).decode("utf-8")
+
+    assert 'class="ir-bold"' not in content
+    assert "intellireading-bold-style" not in content
 
 
 def _chapter_bold_lengths(fixation: int) -> list[int]:

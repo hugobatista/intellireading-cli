@@ -408,3 +408,226 @@ def test_metaguide_dir_cmd_with_fixation_level(tmp_path):
         assert "<b>" in level_one_content
         assert "<b>" in level_five_content
         assert level_one_content != level_five_content
+
+
+def test_metaguide_xhtml_cmd_with_bold_style_shadow(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "output.xhtml", "--bold_style", "shadow"],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output.xhtml", encoding="utf-8") as output_file:
+            output_content = output_file.read()
+
+        assert 'class="ir-bold"' in output_content
+        assert "intellireading-bold-style" in output_content
+        assert "text-shadow" in output_content
+        assert "<b>rea</b>ding" not in output_content
+
+
+def test_metaguide_xhtml_cmd_with_bold_style_stroke(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "output.xhtml", "--bold_style", "stroke"],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output.xhtml", encoding="utf-8") as output_file:
+            output_content = output_file.read()
+
+        assert 'class="ir-bold"' in output_content
+        assert "intellireading-bold-style" in output_content
+        assert "-webkit-text-stroke" in output_content
+
+
+def test_metaguide_xhtml_cmd_rejects_invalid_bold_style(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            ["--input_file", "input.xhtml", "--output_file", "output.xhtml", "--bold_style", "invalid"],
+        )
+
+        assert result.exit_code != 0
+        assert not os.path.exists("output.xhtml")
+
+
+def test_metaguide_epub_cmd_with_bold_style_shadow(tmp_path):
+    runner = CliRunner()
+    epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
+
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(
+            metaguide_epub_cmd,
+            [
+                "--input_file",
+                epub_test_file,
+                "--output_file",
+                "output.epub",
+                "--bold_style",
+                "shadow",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        with zipfile.ZipFile("output.epub", "r") as zip_ref:
+            content = zip_ref.read(_CHAPTER_PATH).decode("utf-8")
+
+        assert 'class="ir-bold"' in content
+        assert "intellireading-bold-style" in content
+        assert "text-shadow" in content
+
+
+def test_metaguide_dir_cmd_with_bold_style_shadow(tmp_path):
+    runner = CliRunner()
+    test_dir = os.path.join(os.path.dirname(__file__), "test_files")
+
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(
+            metaguide_dir_cmd,
+            [
+                "--input_dir",
+                test_dir,
+                "--output_dir",
+                "output",
+                "--bold_style",
+                "shadow",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output/input.xhtml", encoding="utf-8") as output_file:
+            xhtml_content = output_file.read()
+
+        assert 'class="ir-bold"' in xhtml_content
+        assert "intellireading-bold-style" in xhtml_content
+        assert "text-shadow" in xhtml_content
+
+        with zipfile.ZipFile("output/input.epub", "r") as zip_ref:
+            epub_content = zip_ref.read(_CHAPTER_PATH).decode("utf-8")
+
+        assert 'class="ir-bold"' in epub_content
+        assert "intellireading-bold-style" in epub_content
+        assert "text-shadow" in epub_content
+
+
+def test_metaguide_xhtml_cmd_with_bold_intensity(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            [
+                "--input_file",
+                "input.xhtml",
+                "--output_file",
+                "output.xhtml",
+                "--bold_style",
+                "shadow",
+                "--bold_intensity",
+                "5",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output.xhtml", encoding="utf-8") as output_file:
+            output_content = output_file.read()
+
+        assert "text-shadow: 0.06em 0 0 currentColor, -0.06em 0 0 currentColor" in output_content
+
+
+def test_metaguide_xhtml_cmd_rejects_invalid_bold_intensity(tmp_path):
+    runner = CliRunner()
+
+    with contextlib.chdir(tmp_path):
+        _write_sample_xhtml("input.xhtml")
+
+        result = runner.invoke(
+            metaguide_xhtml_cmd,
+            [
+                "--input_file",
+                "input.xhtml",
+                "--output_file",
+                "output.xhtml",
+                "--bold_intensity",
+                "6",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert not os.path.exists("output.xhtml")
+
+
+def test_metaguide_epub_cmd_with_bold_intensity(tmp_path):
+    runner = CliRunner()
+    epub_test_file = os.path.join(os.path.dirname(__file__), "test_files", "input.epub")
+
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(
+            metaguide_epub_cmd,
+            [
+                "--input_file",
+                epub_test_file,
+                "--output_file",
+                "output.epub",
+                "--bold_style",
+                "stroke",
+                "--bold_intensity",
+                "1",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        with zipfile.ZipFile("output.epub", "r") as zip_ref:
+            content = zip_ref.read(_CHAPTER_PATH).decode("utf-8")
+
+        assert "-webkit-text-stroke: 0.015em currentColor" in content
+
+
+def test_metaguide_dir_cmd_with_bold_intensity(tmp_path):
+    runner = CliRunner()
+    test_dir = os.path.join(os.path.dirname(__file__), "test_files")
+
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(
+            metaguide_dir_cmd,
+            [
+                "--input_dir",
+                test_dir,
+                "--output_dir",
+                "output",
+                "--bold_style",
+                "shadow",
+                "--bold_intensity",
+                "5",
+            ],
+        )
+
+        assert result.exit_code == 0
+
+        with open("output/input.xhtml", encoding="utf-8") as output_file:
+            xhtml_content = output_file.read()
+
+        assert "text-shadow: 0.06em 0 0 currentColor, -0.06em 0 0 currentColor" in xhtml_content

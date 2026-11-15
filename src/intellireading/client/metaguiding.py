@@ -34,11 +34,52 @@ _FIXATION_RATIOS = {1: 0.30, 2: 0.40, 3: 0.50, 4: 0.60, 5: 0.70}
 FIXATION_LEVELS = tuple(sorted(_FIXATION_RATIOS))
 _THREE_LETTER_WORD_LENGTH = 3
 
+DEFAULT_BOLD_STYLE = "tag"
+BOLD_STYLES = ("tag", "shadow", "stroke")
+DEFAULT_BOLD_INTENSITY = 3
+BOLD_INTENSITIES = (1, 2, 3, 4, 5)
+_BOLD_CLASS_NAME = "ir-bold"
+_BOLD_STYLE_ELEMENT_ID = "intellireading-bold-style"
+_BOLD_SHADOW_OFFSETS = {1: 0.02, 2: 0.03, 3: 0.04, 4: 0.05, 5: 0.06}
+_BOLD_STROKE_WIDTHS = {1: 0.015, 2: 0.025, 3: 0.035, 4: 0.045, 5: 0.055}
+_ABOUT_PAGE_TITLE = "Thank you for using IntelliReading"
+
 
 def _validate_fixation(fixation: int) -> None:
     if isinstance(fixation, bool) or not isinstance(fixation, int) or fixation not in _FIXATION_RATIOS:
         msg = f"Invalid fixation level '{fixation}'. Valid levels are {FIXATION_LEVELS}"
         raise ValueError(msg)
+
+
+def _validate_bold_style(bold_style: str) -> None:
+    if not isinstance(bold_style, str) or bold_style not in BOLD_STYLES:
+        msg = f"Invalid bold style '{bold_style}'. Valid styles are {BOLD_STYLES}"
+        raise ValueError(msg)
+
+
+def _validate_bold_intensity(bold_intensity: int) -> None:
+    if (
+        isinstance(bold_intensity, bool)
+        or not isinstance(bold_intensity, int)
+        or bold_intensity not in _BOLD_SHADOW_OFFSETS
+    ):
+        msg = f"Invalid bold intensity '{bold_intensity}'. Valid intensities are {BOLD_INTENSITIES}"
+        raise ValueError(msg)
+
+
+def _bold_style_css(bold_style: str, bold_intensity: int) -> str | None:
+    if bold_style == "shadow":
+        offset = _BOLD_SHADOW_OFFSETS[bold_intensity]
+        return (
+            f"b.{_BOLD_CLASS_NAME} {{ font-weight: normal !important; "
+            f"text-shadow: {offset}em 0 0 currentColor, -{offset}em 0 0 currentColor; }}"
+        )
+    if bold_style == "stroke":
+        width = _BOLD_STROKE_WIDTHS[bold_intensity]
+        return (
+            f"b.{_BOLD_CLASS_NAME} {{ font-weight: normal !important; -webkit-text-stroke: {width}em currentColor; }}"
+        )
+    return None
 
 
 def _generate_flag_file_content() -> bytes:
@@ -92,10 +133,10 @@ class RegExBoldMetaguider:
 
     _body_regex = re.compile(r"<body[^>]*>(.*)</body>", re.DOTALL)
     _text_block_regex = re.compile(r"(?<!<b[^>]*)>[^\S]*[^\s<][^<]*[^\S\n]*<")
-    _bolded_text_block_regex = re.compile(r"<b>\b\w{1}\b</b>|<b>\b\w+\b</b>(?:\b\w+\b)")
+    _bolded_text_block_regex = re.compile(r"<b(?:\s[^>]*)?>\b\w{1}\b</b>|<b(?:\s[^>]*)?>\b\w+\b</b>(?:\b\w+\b)")
     _word_pattern_regex = re.compile(r"\b\w+\b", re.UNICODE)
     _entity_ref_regex = re.compile(r"(&[#a-zA-Z][a-zA-Z0-9]*;)")
-    _bolded_word_regex = re.compile(r"<b>(.*?)</b>")
+    _bolded_word_regex = re.compile(r"<b(?:\s[^>]*)?>(.*?)</b>")
     # The optional namespace prefix matches prefixed SVG elements; the (?<!/) guard skips
     # self-closing tags. Only the content is replaced, so text-node boundaries are preserved.
     _non_prose_region_regex = re.compile(
@@ -110,10 +151,21 @@ class RegExBoldMetaguider:
     _non_prose_sentinel = "\x00\x01"
     _non_prose_sentinel_regex = re.compile(r"\x00\x01")
 
-    def __init__(self, fallback_encoding: str = "utf-8", *, fixation: int = DEFAULT_FIXATION) -> None:
+    def __init__(
+        self,
+        fallback_encoding: str = "utf-8",
+        *,
+        fixation: int = DEFAULT_FIXATION,
+        bold_style: str = DEFAULT_BOLD_STYLE,
+        bold_intensity: int = DEFAULT_BOLD_INTENSITY,
+    ) -> None:
         _validate_fixation(fixation)
+        _validate_bold_style(bold_style)
+        _validate_bold_intensity(bold_intensity)
         self._fallback_encoding = fallback_encoding
         self._fixation = fixation
+        self._bold_style = bold_style
+        self._bold_intensity = bold_intensity
         self._bold_ratio = _FIXATION_RATIOS[fixation]
 
     def _bold_word(self, word: str) -> str:
@@ -131,7 +183,9 @@ class RegExBoldMetaguider:
         if word_length > 1:
             # always leave at least one character unbolded
             bold_length = min(bold_length, word_length - 1)
-        return f"<b>{word[:bold_length]}</b>{word[bold_length:]}"  # Bold the first part of the word
+        if self._bold_style == "tag":
+            return f"<b>{word[:bold_length]}</b>{word[bold_length:]}"
+        return f'<b class="{_BOLD_CLASS_NAME}">{word[:bold_length]}</b>{word[bold_length:]}'
 
     def _unbold_word(self, word: str) -> str:
         # if the word is an empty string, whitespace or new line, return it
@@ -139,7 +193,7 @@ class RegExBoldMetaguider:
             return word
 
         # short-circuit if the word is not bolded
-        if "<b>" not in word:
+        if "<b" not in word:
             return word
 
         # remove the <b></b> tags
@@ -302,12 +356,38 @@ class RegExBoldMetaguider:
 
         return encoding or self._fallback_encoding
 
+    def _inject_bold_style_css(self, html: str) -> str:
+        if self._bold_style == "tag" or _BOLD_STYLE_ELEMENT_ID in html:
+            return html
+        css = _bold_style_css(self._bold_style, self._bold_intensity)
+        if not css:
+            return html
+        style_element = f'<style type="text/css" id="{_BOLD_STYLE_ELEMENT_ID}">{css}</style>'
+        if "</head>" in html:
+            return html.replace("</head>", f"{style_element}</head>", 1)
+        body_match = re.search(r"<body[^>]*>", html, re.IGNORECASE)
+        if body_match is not None:
+            return html[: body_match.start()] + style_element + html[body_match.start() :]
+        return html + style_element
+
+    def _remove_bold_style_css(self, html: str) -> str:
+        return re.sub(
+            rf'<style[^>]*id="{re.escape(_BOLD_STYLE_ELEMENT_ID)}"[^>]*>.*?</style>',
+            "",
+            html,
+            flags=re.DOTALL,
+        )
+
     def metaguide_xhtml_document(self, xhtml_document: bytes, *, remove_metaguiding: bool = False) -> bytes:
         # if none of the methods to detect the encoding work, use utf-8
         encoding = self._get_encoding(xhtml_document) or "utf-8"
 
         html = xhtml_document.decode(encoding)
         bolded_html = self._bold_document(html, remove_metaguiding=remove_metaguiding)
+        if remove_metaguiding:
+            bolded_html = self._remove_bold_style_css(bolded_html)
+        else:
+            bolded_html = self._inject_bold_style_css(bolded_html)
         return bolded_html.encode(encoding)
 
 
@@ -796,6 +876,8 @@ def metaguide_epub_file(
     remove_metaguiding: bool = False,
     include_about_page: bool = True,
     fixation: int = DEFAULT_FIXATION,
+    bold_style: str = DEFAULT_BOLD_STYLE,
+    bold_intensity: int = DEFAULT_BOLD_INTENSITY,
 ) -> None:
     """Metaguide an epub file
     input_file: str
@@ -808,6 +890,12 @@ def metaguide_epub_file(
         If True, adds the IntelliReading about/donation page to the end of the epub
     fixation: int
         How much of each word is bolded, from 1 (least) to 5 (most). Defaults to 3
+    bold_style: str
+        How to render the bold emphasis: 'tag' uses the font's bold face,
+        'shadow' and 'stroke' keep the original font metrics. Defaults to 'tag'
+    bold_intensity: int
+        How strong the visual bold effect is, from 1 (subtle) to 5 (strongest).
+        Only applies to the 'shadow' and 'stroke' styles. Defaults to 3
     """
 
     _logger.debug(f"Processing file '{input_file}' to output '{output_file}'")
@@ -821,6 +909,8 @@ def metaguide_epub_file(
             remove_metaguiding=remove_metaguiding,
             include_about_page=include_about_page,
             fixation=fixation,
+            bold_style=bold_style,
+            bold_intensity=bold_intensity,
         )
         with open(output_file, "wb") as output_writer:
             output_writer.write(output_file_stream.read())
@@ -832,6 +922,8 @@ def metaguide_epub_stream(
     remove_metaguiding: bool = False,
     include_about_page: bool = True,
     fixation: int = DEFAULT_FIXATION,
+    bold_style: str = DEFAULT_BOLD_STYLE,
+    bold_intensity: int = DEFAULT_BOLD_INTENSITY,
 ) -> BytesIO:
     """Metaguide an epub input stream
     input_file_stream: BytesIO
@@ -842,11 +934,17 @@ def metaguide_epub_stream(
         If True, adds the IntelliReading about/donation page to the end of the epub
     fixation: int
         How much of each word is bolded, from 1 (least) to 5 (most). Defaults to 3
+    bold_style: str
+        How to render the bold emphasis: 'tag' uses the font's bold face,
+        'shadow' and 'stroke' keep the original font metrics. Defaults to 'tag'
+    bold_intensity: int
+        How strong the visual bold effect is, from 1 (subtle) to 5 (strongest).
+        Only applies to the 'shadow' and 'stroke' styles. Defaults to 3
     return: BytesIO
         The metaguided epub file stream
     """
     output_stream = BytesIO()
-    metaguider = RegExBoldMetaguider(fixation=fixation)
+    metaguider = RegExBoldMetaguider(fixation=fixation, bold_style=bold_style, bold_intensity=bold_intensity)
 
     if remove_metaguiding:
         _logger.debug("Removing metaguiding from epub")
@@ -896,7 +994,13 @@ def metaguide_epub_stream(
 
 
 def metaguide_xhtml_file(
-    input_file: str, output_file: str, *, remove_metaguiding: bool = False, fixation: int = DEFAULT_FIXATION
+    input_file: str,
+    output_file: str,
+    *,
+    remove_metaguiding: bool = False,
+    fixation: int = DEFAULT_FIXATION,
+    bold_style: str = DEFAULT_BOLD_STYLE,
+    bold_intensity: int = DEFAULT_BOLD_INTENSITY,
 ) -> None:
     """Metaguide an xhtml file
     input_file: str
@@ -907,6 +1011,12 @@ def metaguide_xhtml_file(
         If True, removes metaguiding from the xhtml file
     fixation: int
         How much of each word is bolded, from 1 (least) to 5 (most). Defaults to 3
+    bold_style: str
+        How to render the bold emphasis: 'tag' uses the font's bold face,
+        'shadow' and 'stroke' keep the original font metrics. Defaults to 'tag'
+    bold_intensity: int
+        How strong the visual bold effect is, from 1 (subtle) to 5 (strongest).
+        Only applies to the 'shadow' and 'stroke' styles. Defaults to 3
     """
     _logger.debug(f"Processing file '{input_file}' to output '{output_file}'")
     _ensure_file_exists(input_file)
@@ -915,7 +1025,11 @@ def metaguide_xhtml_file(
     with open(input_file, "rb") as input_reader:
         input_file_stream = BytesIO(input_reader.read())
         output_file_stream = metaguide_xhtml_stream(
-            input_file_stream, remove_metaguiding=remove_metaguiding, fixation=fixation
+            input_file_stream,
+            remove_metaguiding=remove_metaguiding,
+            fixation=fixation,
+            bold_style=bold_style,
+            bold_intensity=bold_intensity,
         )
     output_file_stream.seek(0)
     with open(output_file, "wb") as output_writer:
@@ -923,7 +1037,12 @@ def metaguide_xhtml_file(
 
 
 def metaguide_xhtml_stream(
-    input_file_stream: BytesIO, *, remove_metaguiding: bool = False, fixation: int = DEFAULT_FIXATION
+    input_file_stream: BytesIO,
+    *,
+    remove_metaguiding: bool = False,
+    fixation: int = DEFAULT_FIXATION,
+    bold_style: str = DEFAULT_BOLD_STYLE,
+    bold_intensity: int = DEFAULT_BOLD_INTENSITY,
 ) -> BytesIO:
     """Metaguide an xhtml input stream
     input_file_stream: BytesIO
@@ -932,10 +1051,16 @@ def metaguide_xhtml_stream(
         If True, removes metaguiding from the xhtml file
     fixation: int
         How much of each word is bolded, from 1 (least) to 5 (most). Defaults to 3
+    bold_style: str
+        How to render the bold emphasis: 'tag' uses the font's bold face,
+        'shadow' and 'stroke' keep the original font metrics. Defaults to 'tag'
+    bold_intensity: int
+        How strong the visual bold effect is, from 1 (subtle) to 5 (strongest).
+        Only applies to the 'shadow' and 'stroke' styles. Defaults to 3
     return: BytesIO
         The metaguided xhtml file stream
     """
-    metaguider = RegExBoldMetaguider(fixation=fixation)
+    metaguider = RegExBoldMetaguider(fixation=fixation, bold_style=bold_style, bold_intensity=bold_intensity)
     output_file_stream = BytesIO()
     output_file_stream.write(
         metaguider.metaguide_xhtml_document(input_file_stream.read(), remove_metaguiding=remove_metaguiding)
@@ -951,6 +1076,8 @@ def metaguide_dir(
     remove_metaguiding: bool = False,
     include_about_page: bool = True,
     fixation: int = DEFAULT_FIXATION,
+    bold_style: str = DEFAULT_BOLD_STYLE,
+    bold_intensity: int = DEFAULT_BOLD_INTENSITY,
 ) -> None:
     """Metaguides all epubs and xhtml found in a directory (recursively)
     input_dir: str
@@ -963,9 +1090,17 @@ def metaguide_dir(
         If True, adds the IntelliReading about/donation page to the end of epub files
     fixation: int
         How much of each word is bolded, from 1 (least) to 5 (most). Defaults to 3
+    bold_style: str
+        How to render the bold emphasis: 'tag' uses the font's bold face,
+        'shadow' and 'stroke' keep the original font metrics. Defaults to 'tag'
+    bold_intensity: int
+        How strong the visual bold effect is, from 1 (subtle) to 5 (strongest).
+        Only applies to the 'shadow' and 'stroke' styles. Defaults to 3
     """
 
     _validate_fixation(fixation)
+    _validate_bold_style(bold_style)
+    _validate_bold_intensity(bold_intensity)
 
     # get a list of all the files in the directory, and the child directories if recursive
     # verify if the file is a file and if it has the correct extension
@@ -1009,10 +1144,16 @@ def metaguide_dir(
                         remove_metaguiding=remove_metaguiding,
                         include_about_page=include_about_page,
                         fixation=fixation,
+                        bold_style=bold_style,
+                        bold_intensity=bold_intensity,
                     )
                 else:
                     output_file_stream = metaguide_xhtml_stream(
-                        input_file_stream, remove_metaguiding=remove_metaguiding, fixation=fixation
+                        input_file_stream,
+                        remove_metaguiding=remove_metaguiding,
+                        fixation=fixation,
+                        bold_style=bold_style,
+                        bold_intensity=bold_intensity,
                     )
                 with open(output_filename, "wb") as output_writer:
                     output_writer.write(output_file_stream.read())
